@@ -33,7 +33,7 @@ static void MDHelperWriteLine(int fd, NSString *line) {
 
 static NSString *MDHelperEncode(NSString *prefix, NSString *value) {
 	NSData *data = [value dataUsingEncoding:NSUTF8StringEncoding];
-	return [NSString stringWithFormat:@"%@ %@\n", prefix, data.base64EncodedString];
+	return [NSString stringWithFormat:@"%@ %@\n", prefix, [data base64EncodedStringWithOptions:0]];
 }
 
 static void MDHelperSendOK(int fd, NSString *path) {

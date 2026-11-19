@@ -33,7 +33,7 @@ static BOOL MDWriteAll(int fd, const char *bytes, size_t length) {
 
 static NSString *MDEncodeLine(NSString *prefix, NSString *value) {
 	NSData *data = [value dataUsingEncoding:NSUTF8StringEncoding];
-	return [NSString stringWithFormat:@"%@ %@\n", prefix, data.base64EncodedString];
+	return [NSString stringWithFormat:@"%@ %@\n", prefix, [data base64EncodedStringWithOptions:0]];
 }
 
 + (nullable NSDictionary *)runOperation:(NSDictionary *)operation
@@ -77,7 +77,7 @@ static NSString *MDEncodeLine(NSString *prefix, NSString *value) {
 		}
 		return nil;
 	}
-	NSString *requestLine = [NSString stringWithFormat:@"%@\n", json.base64EncodedString];
+	NSString *requestLine = [NSString stringWithFormat:@"%@\n", [json base64EncodedStringWithOptions:0]];
 	if (!MDWriteAll(fd, requestLine.UTF8String, requestLine.length)) {
 		close(fd);
 		if (error) {

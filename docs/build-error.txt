@@ -6,13 +6,7 @@
 [0;32m==> [1;39mCompiling MDImportButton.m (arm64)…[m
 [0;32m==> [1;39mCompiling MDDownloadManager.m (arm64)…[m
 [0;32m==> [1;39mCompiling MDHelperClient.m (arm64)…[m
-[1mMDHelperClient.m:36:61: [0m[0;1;31merror: [0m[1mproperty 'base64EncodedString' not found on object of type 'NSData *'[0m
-   36 |         return [NSString stringWithFormat:@"%@ %@\n", prefix, data.base64EncodedString];[0m
-      | [0;1;32m                                                                   ^
-[0m[1mMDHelperClient.m:36:56: [0m[0;1;31merror: [0m[1mformat specifies type 'id' but the argument has type '<dependent type>' [-Werror,-Wformat][0m
-   36 |         return [NSString stringWithFormat:@"%@ %@\n", prefix, data.base64EncodedString];[0m
-      | [0;1;32m                                               ~~             ^~~~~~~~~~~~~~~~~~~~~~~~
-[0m[1mMDHelperClient.m:39:1: [0m[0;1;31merror: [0m[1mmissing context for method declaration[0m
+[1mMDHelperClient.m:39:1: [0m[0;1;31merror: [0m[1mmissing context for method declaration[0m
    39 | + (nullable NSDictionary *)runOperation:(NSDictionary *)operation[0m
       | [0;1;32m^
 [0m[1mMDHelperClient.m:155:1: [0m[0;1;31merror: [0m[1mmissing context for method declaration[0m
@@ -21,7 +15,7 @@
 [0m[1mMDHelperClient.m:169:1: [0m[0;1;31merror: [0m[1m'@end' must appear in an Objective-C context[0m
   169 | @end[0m
       | [0;1;32m^
-[0m5 errors generated.
+[0m3 errors generated.
 make[3]: *** [/Users/runner/work/a2m/a2m/.theos/obj/arm64/MDHelperClient.m.a792a764.o] Error 1
 make[2]: *** [/Users/runner/work/a2m/a2m/.theos/obj/arm64/MusicDrop.dylib] Error 2
 make[1]: *** [internal-library-all_] Error 2

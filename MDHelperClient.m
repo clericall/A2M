@@ -31,11 +31,6 @@ static BOOL MDWriteAll(int fd, const char *bytes, size_t length) {
 	return YES;
 }
 
-static NSString *MDEncodeLine(NSString *prefix, NSString *value) {
-	NSData *data = [value dataUsingEncoding:NSUTF8StringEncoding];
-	return [NSString stringWithFormat:@"%@ %@\n", prefix, [data base64EncodedStringWithOptions:0]];
-}
-
 @implementation MDHelperClient
 
 + (nullable NSDictionary *)runOperation:(NSDictionary *)operation

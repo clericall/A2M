@@ -54,10 +54,17 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x layout/DEBIAN/postinst layout/DEBIAN/postrm
-          make clean
-          make package FINALPACKAGE=1
+          make clean 2>&1 | tee /tmp/musicdrop-build.log
+          make package FINALPACKAGE=1 2>&1 | tee -a /tmp/musicdrop-build.log
           ls -lh packages
           test -n "$(find packages -maxdepth 1 -name '*.deb' -print -quit)"
+
+      - name: Dump build log on failure
+        if: failure()
+        run: |
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/musicdrop-build.log >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Generate repository index
         run: |

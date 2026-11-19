@@ -1,126 +1,171 @@
 # MusicDrop
 
-MusicDrop is a rootless jailbreak tweak that adds an **Add Music** button to the stock iOS Music app. Pick audio files from Files or iCloud Drive, or download supported audio from a URL, and MusicDrop reads tags and artwork before handing the file to Music's own importer. No computer, SSH session, or desktop sync is needed after installation.
+MusicDrop is a rootless iOS tweak that adds an **Add Music** button to the stock Music app. It imports DRM-free audio files from the Files app and can download supported audio from a URL. Files are copied locally, inspected with `AVFoundation`, and handed to Music's own import queue.
 
-The package and Sileo repository are built and published by GitHub Actions to GitHub Pages. You own the source, the build, and the repo.
+The package is built and published with GitHub Actions. The Sileo repository is hosted on GitHub Pages.
+
+## Scope
+
+MusicDrop does not bypass DRM, rip Spotify tracks, or upload user files anywhere. Spotify URLs are recognized but cannot be downloaded because Spotify does not expose full-track audio to third parties.
+
+Direct HTTPS downloads work without extra packages. YouTube downloads require separately installed rootless `yt-dlp` and FFmpeg packages and should only be used for media you are allowed to save.
 
 ## Requirements
 
-- iPhone X (or another arm64 iOS 15/16 device) on a **rootless** jailbreak.
-- palera1n rootless is the target setup. Other rootless jailbreaks that provide MobileSubstrate or ElleKit should work.
-- iOS **15.0 through 16.7.x**.
-- Sileo (or another package manager that supports rootless `iphoneos-arm64` packages).
-- DRM-free audio files you have the right to use.
+- Rootless jailbreak on iOS 15.0–16.7.x
+- MobileSubstrate or ElleKit
+- Sileo or another package manager that supports `iphoneos-arm64`
+- DRM-free audio files the user is allowed to import
+- Optional for YouTube downloads: rootless `yt-dlp` and FFmpeg
 
-MusicDrop does not bypass DRM, upload your files, or extract audio from DRM-protected services. Direct URLs work without extra packages. Optional YouTube downloads require separately installed rootless **yt-dlp** and **FFmpeg** packages and must only be used for media you are authorized to save. Spotify links are recognized but cannot be downloaded: Spotify does not expose full-track audio through its API.
+The build target is iPhone X on palera1n rootless. Other rootless setups may work but are not separately tested.
 
-## Install from your published repo
+## Install
 
-After you push this repository and the workflow succeeds, your repo URL is:
+After the GitHub Actions workflow succeeds, the repository URL is:
 
+```text
+https://<owner>.github.io/<repo>/
 ```
-https://<your-github-username>.github.io/<your-repo-name>/
+
+For example:
+
+```text
+https://clericall.github.io/A2M/
 ```
 
-For example, if the repository is `musiccc` under the user `alice`, the URL is `https://alice.github.io/musiccc/`.
+On the device:
 
-On the phone:
+1. Open Sileo.
+2. Add the repository URL under **Sources**.
+3. Install **MusicDrop**.
+4. Let Sileo respring or relaunch Music.
+5. Open Music and wait a moment for the pink floating button to appear.
 
-1. Open Sileo → **Sources** → **Edit** → **Add Source**.
-2. Paste the repo URL and add it.
-3. Open the source, install **MusicDrop**, and let Sileo respring or relaunch Music.
-4. Open Music. A pink floating button appears near the bottom-right.
-5. Tap it and choose **Import Files** for one or more local audio files, or **Download URL** for a direct HTTPS audio or YouTube URL.
-6. Keep Music open while the import finishes.
+Tapping the button opens a menu:
 
-You can drag the button anywhere on screen. Its position is remembered.
+- **Import Files** — choose one or more local files.
+- **Download URL** — enter a direct audio URL or a YouTube URL.
 
-## First-time GitHub setup
+Keep Music in the foreground during imports. MusicDrop requests background time, but the local file server runs inside the Music process and may be suspended.
 
-1. Create a **public** GitHub repository (private repositories need a paid plan for Pages). The suggested name is `musiccc`.
-2. Push this project to the repository's default branch (`main` or `master`).
-3. In the repository, open **Settings → Pages → Build and deployment** and set **Source** to **GitHub Actions**. The workflow also tries to enable Pages automatically, but setting it explicitly avoids surprises.
-4. Open the **Actions** tab and run **Build and publish MusicDrop** (or just push a commit).
-5. Wait for the build. It will:
-   - install Theos and an iOS SDK on the macOS runner;
-   - build the rootless `.deb`;
-   - generate `docs/Packages`, `docs/Release`, `docs/repo.json`, and compressed indexes;
-   - commit the generated index back to `docs/` with `[skip ci]`;
-   - deploy `docs/` to GitHub Pages.
-6. Open the Pages URL shown by the workflow and use its **Add to Sileo** or **Copy repo URL** button.
+## GitHub Pages setup
 
-No repository URL is hard-coded in the tweak. The workflow derives the Pages URL from `github.repository_owner` and the repository name.
+1. Create a public GitHub repository. Private repositories need a paid plan for Pages.
+2. Push the project to the default branch (`main` or `master`).
+3. In repository settings, set **Pages → Build and deployment → Source** to **GitHub Actions**.
+4. Run **Build and publish MusicDrop** in the Actions tab, or push a commit.
 
-### If the workflow cannot push the generated index
+The workflow:
 
-The `GITHUB_TOKEN` needs `contents: write`. The workflow already requests it. A protected branch or an organization policy can still block the push; the Pages deployment will continue with the generated artifact, but the `docs/` index in git will not update until the push is allowed.
+- installs Theos and an iOS SDK on a macOS runner;
+- builds the rootless `.deb`;
+- generates `docs/Packages`, `docs/Release`, and compressed indexes;
+- commits the generated index with `[skip ci]`;
+- deploys `docs/` to GitHub Pages.
 
-### If Pages is not enabled
+No repository URL is hard-coded in the tweak. The workflow derives it from `github.repository_owner` and the repository name.
 
-The `actions/configure-pages` step uses `enablement: true`. If that fails, enable Pages manually as described above and re-run the workflow.
+If the workflow cannot commit the generated index, check that `GITHUB_TOKEN` has `contents: write`. Protected branches and organization policies can also block the push.
 
 ## Usage notes
 
-- Select multiple files at once. They are imported one by one.
-- Direct HTTPS downloads accept supported MP3, M4A, AAC, ALAC, WAV, AIFF, CAF, FLAC, MP4, M4V, and MOV responses up to 500 MB. MusicDrop rejects HTML pages and unsupported formats.
-- YouTube downloads make a single audio-only item, capped at 500 MB, convert it to M4A, and preserve metadata/artwork when the source provides it.
-- Spotify URLs return an explanatory error. Use a DRM-free file you own instead.
-- Keep Music in the foreground until the downloads finish. MusicDrop asks iOS for extra background time, but the temporary file server runs inside the Music process, so foreground is the reliable state.
-- Files without embedded artwork get a MusicDrop cover, not a blank square.
-- Metadata is read with `AVAsset`: title, artist, album, genre, composer, year, track number/count, duration, and artwork.
-- Files are copied to `/var/mobile/Media/MusicDrop/inbox/`. Artwork goes to `/var/mobile/Media/MusicDrop/artwork/`. Both are pruned after seven days.
-- Downloads go to `/var/mobile/Media/MusicDrop/downloads/`. Temporary conversion files go to `/var/mobile/Media/MusicDrop/tmp/`. Both are pruned after seven days.
-- Imported songs live in your normal Music library. Uninstalling MusicDrop does not remove them.
+- Multiple files can be selected at once. They are imported serially.
+- The button can be dragged anywhere in the safe area. Its position is stored in `NSUserDefaults`.
+- Direct URL downloads accept MP3, M4A, AAC, ALAC, WAV, AIFF, CAF, FLAC, MP4, M4V, and MOV responses up to 500 MB.
+- Direct URL downloads reject HTML, unsupported formats, empty files, oversized files, non-HTTPS URLs, and private/local hosts.
+- YouTube downloads are single items, not playlists. They are converted to M4A and limited to 500 MB.
+- Spotify URLs return an error explaining that full tracks are DRM-protected.
+- Files without embedded artwork get a generated MusicDrop cover.
+- Metadata is read with `AVAsset`: title, artist, album, album artist, genre, composer, year, track number/count, duration, and artwork.
+- Imported songs are added to the normal Music library. Uninstalling MusicDrop does not remove them.
 
-### Supported formats
+## Supported formats
 
-Directly supported: **MP3, M4A, AAC, ALAC, WAV, AIFF, CAF, FLAC, M4R, M4B**, plus **MP4, M4V, and MOV** music videos.
+Import and direct download support:
 
-OGG, Opus, WMA, APE, and other formats that AVFoundation/iOS Music cannot decode are rejected with a message. Convert them to MP3 or M4A first.
+- Audio: MP3, M4A, AAC, ALAC, WAV, AIFF, CAF, FLAC, M4R, M4B
+- Video: MP4, M4V, MOV
+
+OGG, Opus, WMA, APE, and other formats that iOS Music cannot decode are rejected. Convert them to MP3 or M4A first.
+
+## Files and directories
+
+- `/var/mobile/Media/MusicDrop/inbox/` — copied input files
+- `/var/mobile/Media/MusicDrop/artwork/` — generated/resized artwork
+- `/var/mobile/Media/MusicDrop/downloads/` — URL download outputs
+- `/var/mobile/Media/MusicDrop/tmp/` — temporary conversion files
+- `/var/mobile/Media/MusicDrop/musicdrop.log` — log file
+
+Input, artwork, downloads, and temporary files are pruned after seven days. The log rotates to `musicdrop.log.old` at 1 MB.
+
+## How it works
+
+1. A constructor installs a floating `UIButton` in Music's key window.
+2. Local import uses `UIDocumentPickerViewController` with audio and movie UTIs and `asCopy:YES`.
+3. URL downloads use `NSURLSession` for direct files or `yt-dlp`/FFmpeg for YouTube.
+4. Local files are copied into the MusicDrop inbox with a random token name.
+5. `AVURLAsset` reads duration, tags, and artwork. Artwork is resized to JPEG or replaced with a generated cover.
+6. A loopback HTTP server serves the registered file and artwork tokens with byte-range support.
+7. `StoreServices` is loaded with `dlopen`. MusicDrop builds `SSDownloadMetadata`, wraps it in an `SSDownload`, and adds it to an `SSDownloadQueue`.
+8. Music's store daemon fetches the loopback URL and adds the media to the library.
+
+The private StoreServices code is isolated in `MDImporter.m`. The rest uses public UIKit, Foundation, and AVFoundation APIs.
 
 ## Troubleshooting
 
 ### The button does not appear
 
-- Confirm the package is installed in Sileo.
-- Confirm you are on a rootless jailbreak and that MobileSubstrate/ElleKit is working for other tweaks.
-- Fully close Music and reopen it. The post-install script runs `killall -9 Music`.
-- Check the log:
+Check:
 
-  ```
-  /var/mobile/Media/MusicDrop/musicdrop.log
-  ```
+- MusicDrop is installed in Sileo.
+- Tweak injection works for other tweaks.
+- Music was fully closed and reopened after installation.
+- `/var/jb/Library/MobileSubstrate/DynamicLibraries/MusicDrop.dylib` exists.
+- `/var/jb/Library/MobileSubstrate/DynamicLibraries/MusicDrop.plist` targets `com.apple.Music`.
 
-  You can read it with Filza or SSH. The first line should say `MusicDrop loaded in pid ...`.
+The first log line should be:
 
-- Confirm the filter targets `com.apple.Music` (it does in `MusicDrop.plist`).
+```text
+MusicDrop loaded in pid ...
+```
 
-### The import fails or nothing is added
+### Imports fail
 
-- Keep Music open during the import.
-- Try a plain MP3 with embedded title/artist first.
-- Read the log for `StoreServices available: yes`, `Server: listening on 127.0.0.1:...`, and `Enqueued ...`.
-- Verify the file copied into `/var/mobile/Media/MusicDrop/inbox/`.
-- Check free storage. Very large files can fail if the device is nearly full.
-- Private StoreServices APIs are not documented and can change between iOS releases. The log is the first place to look.
+Check:
 
-### The repo does not load in Sileo
+- Music stayed in the foreground.
+- The file is a supported DRM-free format.
+- The device has free storage.
+- The log contains `StoreServices available: yes`, `Server: listening on 127.0.0.1:...`, and `Enqueued ...`.
 
-- Open `https://<owner>.github.io/<repo>/Packages` in Safari. It should be plain text starting with `Package:`.
-- Open `https://<owner>.github.io/<repo>/Release`. It should contain hashes.
-- Make sure the Pages source is **GitHub Actions** and the deploy step succeeded.
-- Refresh the source in Sileo. If the index was just generated, GitHub Pages can take a minute to serve it.
+Private StoreServices APIs are undocumented and can change between iOS versions. The log is the first place to look.
 
-### GitHub Actions fails during the build
+### URL downloads fail
 
-- The Theos clone and SDK download are the slowest steps; the job has a 30-minute timeout.
-- `ldid` is installed with Homebrew if it is missing on the runner.
-- Package compression is forced to gzip so the pure-Python index generator can read `control.tar.gz` without extra modules.
-- If the workflow cannot push generated docs, see the note above. The Pages artifact can still deploy.
+Check:
+
+- The URL is HTTPS and public.
+- The server returns audio/video, not HTML.
+- The response has a supported extension or MIME type.
+- The file is not empty and is under 500 MB.
+- For YouTube, rootless `yt-dlp` and FFmpeg are installed and executable.
+
+iOS may prevent `yt-dlp` from being spawned from inside Music. If that happens, download the file into Files by another method and use **Import Files**.
+
+### The repository does not load in Sileo
+
+Check:
+
+- `https://<owner>.github.io/<repo>/Packages` serves plain text.
+- `https://<owner>.github.io/<repo>/Release` contains hashes.
+- Pages source is set to GitHub Actions.
+- The deployment step succeeded.
+- The source was refreshed in Sileo after deployment.
 
 ## Build locally
 
-You need macOS or Linux with [Theos](https://theos.dev/), an iOS SDK, and `ldid`. Windows users should use GitHub Actions; iOS compilation is not supported natively on Windows.
+iOS compilation is supported on macOS or Linux with Theos. Windows users should use GitHub Actions.
 
 ```sh
 export THEOS="$HOME/theos"
@@ -129,79 +174,69 @@ chmod +x layout/DEBIAN/postinst layout/DEBIAN/postrm
 make clean package FINALPACKAGE=1
 ```
 
-The `.deb` is written to `packages/`. To regenerate the repo locally:
+The `.deb` is written to `packages/`.
+
+To generate the repository locally:
 
 ```sh
 python3 scripts/make_repo.py \
   --debs packages \
   --out docs \
   --clean \
-  --homepage "https://example.github.io/musiccc/"
+  --homepage "https://example.github.io/A2M/"
+```
 
+Preview it with:
+
+```sh
 python3 -m http.server -d docs 8080
 ```
 
-Open `http://localhost:8080/` to preview the landing page. The Sileo URL in the preview points at localhost, which is useful for checking the page but not for installing on a phone.
+The preview's Sileo URL points at localhost and is only useful for checking the page.
 
-To regenerate the repo icon (requires Pillow):
-
-```sh
-python3 scripts/make_icon.py
-```
-
-## Updating the tweak
+## Updating
 
 1. Edit the source.
 2. Bump `Version:` in `control`.
 3. Commit and push.
 
-The workflow rebuilds the package, replaces the previous `.deb` in `docs/debs/` (because the generator runs with `--clean`), regenerates the indexes, commits them, and deploys. Sileo users refresh the source and update normally.
+The workflow rebuilds the package, replaces the `.deb` in `docs/debs/`, regenerates the indexes, and deploys the repository. Users update through Sileo.
 
-If you need to keep older versions available, remove `--clean` from the workflow. The generator will index every `.deb` it finds, and Sileo will choose the newest version.
-
-## How it works
-
-1. A constructor in the injected dylib installs a floating `UIButton` in Music's key window.
-2. The button offers local file import and URL download. Local file import presents a `UIDocumentPickerViewController` configured with audio and movie UTIs and `asCopy:YES`.
-3. Direct URLs are validated and downloaded with `NSURLSession`; YouTube URLs invoke an installed `yt-dlp` binary with an argument array and FFmpeg location. Both produce a local file under `/var/mobile/Media/MusicDrop/downloads/`.
-4. Each local file is copied into `/var/mobile/Media/MusicDrop/inbox/` with a random token name.
-5. `AVURLAsset` reads duration, tags, and artwork. Artwork is normalized and resized to JPEG; a generated cover is used if the file has none.
-6. A small HTTP server binds to `127.0.0.1` on an OS-assigned port and serves only the registered file/artwork tokens. It supports `GET`, `HEAD`, and byte ranges.
-7. MusicDrop loads `StoreServices` with `dlopen`, builds an `SSDownloadMetadata` payload, wraps it in an `SSDownload`, and adds it to an `SSDownloadQueue` created with `mediaDownloadKinds`.
-8. Music's store daemon fetches the file from the loopback URL and adds it to the library.
-
-The private-API handoff is intentionally isolated in `MDImporter.m`. Everything else is public UIKit, Foundation, and AVFoundation.
+Remove `--clean` from the workflow if older versions should remain available.
 
 ## Repository layout
 
-```
+```text
 Makefile                     Theos tweak build
-control                      package metadata (version, arch, dependency)
+control                      package metadata
 MusicDrop.plist              MobileSubstrate filter for com.apple.Music
 MusicDrop.xm                 tweak constructor
-MDImportButton.h/.m          floating button, picker, progress UI
+MDImportButton.h/.m          button, menus, picker, progress UI
 MDDownloadManager.h/.m       URL validation, direct downloads, yt-dlp wrapper
-MDImporter.h/.m              copy, metadata, artwork, StoreServices import
+MDImporter.h/.m              file copy, metadata, artwork, import
 MDServer.h/.m                loopback HTTP file server
-MDLog.h/.m                   file + console logging
-layout/DEBIAN/               postinst / postrm
-scripts/make_repo.py         stdlib-only .deb index generator
-scripts/make_icon.py         optional repo icon generator
-docs/                        GitHub Pages site + generated repo index
+MDLog.h/.m                   file and console logging
+layout/DEBIAN/               package scripts
+scripts/make_repo.py         .deb repository index generator
+scripts/make_icon.py         repository icon generator
+docs/                        GitHub Pages site and generated index
 .github/workflows/build.yml  build, index, commit, deploy
 ```
 
-## Limitations and risk
+## Limitations
 
-- Rootless only. The package is `iphoneos-arm64` and installs under `/var/jb`.
-- iOS 15/16 are the targets. A future iOS release can break the private StoreServices classes.
-- Importing depends on Music's internal download queue. This is not an App Store-supported workflow.
-- The temporary server uses an unauthenticated loopback port while the import runs. It only serves random-token paths for files you selected, and it is not reachable from other devices.
-- URL downloads accept HTTPS only and reject private/local-host addresses. YouTube uses externally installed tools; their behavior and output depend on those packages and upstream sites. iOS may prevent `yt-dlp` execution inside the Music process; if it does, use **Import Files** after downloading elsewhere.
-- Keep backups of anything irreplaceable. This is a jailbreak tweak; use it at your own risk.
+- Rootless only; package architecture is `iphoneos-arm64`.
+- iOS 15/16 are the tested targets.
+- A future iOS version can break the StoreServices classes.
+- Imports depend on Music's private download queue.
+- The loopback server is unauthenticated but bound to `127.0.0.1`.
+- Downloads are capped at 500 MB.
+- YouTube support depends on external tools and upstream site behavior.
+- Spotify full-track downloads are not supported.
+- This is a jailbreak tweak. Keep backups of anything important.
 
 ## License
 
 MIT. See [LICENSE](LICENSE).
 
-MusicDrop is not affiliated with Apple. Apple, iPhone, and Music are trademarks of Apple Inc.
+MusicDrop is not affiliated with Apple. Apple and Music are trademarks of Apple Inc.

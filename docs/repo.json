@@ -2,7 +2,7 @@
   "name": "MusicDrop",
   "origin": "MusicDrop",
   "description": "MusicDrop - import your own audio files directly into the Music app.",
-  "generated": "2026-11-19T12:06:14.785225+00:00",
+  "generated": "2026-11-19T12:13:20.933204+00:00",
   "packages": [
     {
       "package": "com.musiccc.musicdrop",
@@ -11,14 +11,14 @@
       "architecture": "iphoneos-arm64",
       "description": "Import your own audio files into the Music app, on-device.",
       "filename": "debs/MusicDrop_1.2.0_iphoneos-arm64.deb",
-      "size": 107558,
-      "sha256": "500c2ece1c63fe38c18355d2d862497c96dc891ea732811a5deb5a6fa1fb2d2d"
+      "size": 107560,
+      "sha256": "1c9dd9e6875a6b14e5423f54d67318fa38a72ff15682e94b352b14372a340dfd"
     }
   ],
   "package": "com.musiccc.musicdrop",
   "version": "1.2.0",
   "architecture": "iphoneos-arm64",
   "filename": "debs/MusicDrop_1.2.0_iphoneos-arm64.deb",
-  "size": 107558,
-  "sha256": "500c2ece1c63fe38c18355d2d862497c96dc891ea732811a5deb5a6fa1fb2d2d"
+  "size": 107560,
+  "sha256": "1c9dd9e6875a6b14e5423f54d67318fa38a72ff15682e94b352b14372a340dfd"
 }

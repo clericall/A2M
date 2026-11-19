@@ -62,7 +62,7 @@ jobs:
       - name: Dump build log on failure
         if: failure()
         run: |
-          cp /tmp/musicdrop-build.log docs/build-error.txt
+          { echo "RUN $GITHUB_RUN_ID $GITHUB_SHA"; cat /tmp/musicdrop-build.log; } > docs/build-error.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f docs/build-error.txt

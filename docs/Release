@@ -1,0 +1,22 @@
+Origin: MusicDrop
+Label: MusicDrop
+Suite: stable
+Version: 1.0
+Codename: ios
+Architectures: iphoneos-arm64
+Components: main
+Description: MusicDrop - import your own audio files directly into the Music app.
+Icon: CydiaIcon.png
+Date: Thu, 19 Nov 2026 05:11:55 +0000
+Homepage: https://clericall.github.io/A2M/
+
+MD5Sum:
+ 825f0f4449446e69751a37b9cbae4472 783 Packages
+ d25999041175835318e44352156fc22d 524 Packages.gz
+ 02be07bbe40632f9eb053e5cf5a75e05 585 Packages.bz2
+ 7bfb14a836ccbf9185e1a89ef7d2f3c4 608 Packages.xz
+SHA256:
+ aa597ef6242c95cf3ffa1ba2c5aa911e3b352d99f64cc503a9159748920f97b9 783 Packages
+ 376ae481058b27999511c20e1814172bd633b49c5e1e81463ba2792a64f09b93 524 Packages.gz
+ be78699e538523dd3ac35359f7c151a65d67ed05a3815ba24d559a5b9930161f 585 Packages.bz2
+ a082b136fafae550c1b7db291df7d61616690271bf2c8a42e53109997b93ce5a 608 Packages.xz

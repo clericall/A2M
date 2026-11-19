@@ -1,9 +1,9 @@
 Package: com.musiccc.musicdrop
 Name: MusicDrop
 Description: Import your own audio files into the Music app, on-device.
- Pick MP3, M4A, WAV, AIFF, or FLAC files with the floating button
- inside Music. MusicDrop reads tags and artwork, then hands the file
- to the Music app's own importer. No computer or SSH required.
+ Pick MP3, M4A, WAV, AIFF, or FLAC files with the floating button,
+ or download supported audio and YouTube URLs. MusicDrop reads tags
+ and artwork, then hands the file to the Music app's own importer.
 Maintainer: musiccc
 Author: musiccc
 Section: Tweaks
@@ -11,11 +11,11 @@ Depends: firmware (>= 15.0), mobilesubstrate
 Priority: optional
 Tag: purpose::extension, compatible::ios15, compatible::ios16
 Architecture: iphoneos-arm64
-Version: 1.0.0
-Installed-Size: 296
-Filename: debs/MusicDrop_1.0.0_iphoneos-arm64.deb
-Size: 76360
-MD5sum: ead8280090d8396b98eb1494f22ce05f
-SHA1: b7bb427f30fb144f2d57a0b9e714d83bba5c80cb
-SHA256: 9c384382854c9b1bb9d9fae1a2deb1cb838d9c693152e51b31236c42deea7cc0
+Version: 1.1.0
+Installed-Size: 364
+Filename: debs/MusicDrop_1.1.0_iphoneos-arm64.deb
+Size: 100422
+MD5sum: f8f89d4f4fc2ac5c04731adcce54ac16
+SHA1: 3a41685a902af78d81267927e4809eae31b9b911
+SHA256: 4c806e49c46006bdfef529b18f464d7af43c610cab7a3f2e22139a7a90767804
 

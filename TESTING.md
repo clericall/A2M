@@ -155,6 +155,22 @@ If the tweak disappears after a reboot, verify the jailbreak's tweak injection i
 
 Delete that folder manually with Filza if you want to reclaim the space.
 
+## URL downloads
+
+1. Tap the floating button, choose **Download URL**, and enter a small direct HTTPS URL to an MP3 or M4A you are authorized to save.
+2. Wait for the download and the normal import to finish.
+3. Repeat with a YouTube video URL you own, first with `yt-dlp` and FFmpeg installed, then with one of them removed.
+4. Repeat with a Spotify track URL.
+
+Expected:
+
+- Direct downloads save a supported file under `/var/mobile/Media/MusicDrop/downloads/` and then import like a local file.
+- YouTube downloads show progress, produce M4A with metadata/artwork, and import.
+- Missing `yt-dlp` or FFmpeg produces an actionable error without crashing Music.
+- Spotify URLs explain that full-track audio is DRM-protected and unavailable.
+- Invalid, `http://`, private-network, HTML, empty, and oversized responses fail before importing.
+- The button returns to its normal enabled state after every success and failure.
+
 ## 10. Log and server diagnostics
 
 The log is at:

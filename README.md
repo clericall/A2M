@@ -1,6 +1,6 @@
 # MusicDrop
 
-MusicDrop is a rootless jailbreak tweak that adds an **Import** button to the stock iOS Music app. Pick audio files from Files or iCloud Drive, and MusicDrop copies them, reads their tags and artwork, and hands them to Music's own importer. No computer, SSH session, or desktop sync is needed after installation.
+MusicDrop is a rootless jailbreak tweak that adds an **Add Music** button to the stock iOS Music app. Pick audio files from Files or iCloud Drive, or download supported audio from a URL, and MusicDrop reads tags and artwork before handing the file to Music's own importer. No computer, SSH session, or desktop sync is needed after installation.
 
 The package and Sileo repository are built and published by GitHub Actions to GitHub Pages. You own the source, the build, and the repo.
 
@@ -12,7 +12,7 @@ The package and Sileo repository are built and published by GitHub Actions to Gi
 - Sileo (or another package manager that supports rootless `iphoneos-arm64` packages).
 - DRM-free audio files you have the right to use.
 
-This project does **not** download music, bypass DRM, or upload your files anywhere. It only imports files you select from the system document picker.
+MusicDrop does not bypass DRM, upload your files, or extract audio from DRM-protected services. Direct URLs work without extra packages. Optional YouTube downloads require separately installed rootless **yt-dlp** and **FFmpeg** packages and must only be used for media you are authorized to save. Spotify links are recognized but cannot be downloaded: Spotify does not expose full-track audio through its API.
 
 ## Install from your published repo
 
@@ -30,7 +30,8 @@ On the phone:
 2. Paste the repo URL and add it.
 3. Open the source, install **MusicDrop**, and let Sileo respring or relaunch Music.
 4. Open Music. A pink floating button appears near the bottom-right.
-5. Tap it, choose one or more audio files, and keep Music open while the import finishes.
+5. Tap it and choose **Import Files** for one or more local audio files, or **Download URL** for a direct HTTPS audio or YouTube URL.
+6. Keep Music open while the import finishes.
 
 You can drag the button anywhere on screen. Its position is remembered.
 
@@ -61,10 +62,14 @@ The `actions/configure-pages` step uses `enablement: true`. If that fails, enabl
 ## Usage notes
 
 - Select multiple files at once. They are imported one by one.
+- Direct HTTPS downloads accept supported MP3, M4A, AAC, ALAC, WAV, AIFF, CAF, FLAC, MP4, M4V, and MOV responses up to 500 MB. MusicDrop rejects HTML pages and unsupported formats.
+- YouTube downloads make a single audio-only item, capped at 500 MB, convert it to M4A, and preserve metadata/artwork when the source provides it.
+- Spotify URLs return an explanatory error. Use a DRM-free file you own instead.
 - Keep Music in the foreground until the downloads finish. MusicDrop asks iOS for extra background time, but the temporary file server runs inside the Music process, so foreground is the reliable state.
 - Files without embedded artwork get a MusicDrop cover, not a blank square.
 - Metadata is read with `AVAsset`: title, artist, album, genre, composer, year, track number/count, duration, and artwork.
 - Files are copied to `/var/mobile/Media/MusicDrop/inbox/`. Artwork goes to `/var/mobile/Media/MusicDrop/artwork/`. Both are pruned after seven days.
+- Downloads go to `/var/mobile/Media/MusicDrop/downloads/`. Temporary conversion files go to `/var/mobile/Media/MusicDrop/tmp/`. Both are pruned after seven days.
 - Imported songs live in your normal Music library. Uninstalling MusicDrop does not remove them.
 
 ### Supported formats
@@ -157,12 +162,13 @@ If you need to keep older versions available, remove `--clean` from the workflow
 ## How it works
 
 1. A constructor in the injected dylib installs a floating `UIButton` in Music's key window.
-2. The button presents a `UIDocumentPickerViewController` configured with audio and movie UTIs and `asCopy:YES`.
-3. Each picked file is copied into `/var/mobile/Media/MusicDrop/inbox/` with a random token name.
-4. `AVURLAsset` reads duration, tags, and artwork. Artwork is normalized and resized to JPEG; a generated cover is used if the file has none.
-5. A small HTTP server binds to `127.0.0.1` on an OS-assigned port and serves only the registered file/artwork tokens. It supports `GET`, `HEAD`, and byte ranges.
-6. MusicDrop loads `StoreServices` with `dlopen`, builds an `SSDownloadMetadata` payload, wraps it in an `SSDownload`, and adds it to an `SSDownloadQueue` created with `mediaDownloadKinds`.
-7. Music's store daemon fetches the file from the loopback URL and adds it to the library.
+2. The button offers local file import and URL download. Local file import presents a `UIDocumentPickerViewController` configured with audio and movie UTIs and `asCopy:YES`.
+3. Direct URLs are validated and downloaded with `NSURLSession`; YouTube URLs invoke an installed `yt-dlp` binary with an argument array and FFmpeg location. Both produce a local file under `/var/mobile/Media/MusicDrop/downloads/`.
+4. Each local file is copied into `/var/mobile/Media/MusicDrop/inbox/` with a random token name.
+5. `AVURLAsset` reads duration, tags, and artwork. Artwork is normalized and resized to JPEG; a generated cover is used if the file has none.
+6. A small HTTP server binds to `127.0.0.1` on an OS-assigned port and serves only the registered file/artwork tokens. It supports `GET`, `HEAD`, and byte ranges.
+7. MusicDrop loads `StoreServices` with `dlopen`, builds an `SSDownloadMetadata` payload, wraps it in an `SSDownload`, and adds it to an `SSDownloadQueue` created with `mediaDownloadKinds`.
+8. Music's store daemon fetches the file from the loopback URL and adds it to the library.
 
 The private-API handoff is intentionally isolated in `MDImporter.m`. Everything else is public UIKit, Foundation, and AVFoundation.
 
@@ -174,6 +180,7 @@ control                      package metadata (version, arch, dependency)
 MusicDrop.plist              MobileSubstrate filter for com.apple.Music
 MusicDrop.xm                 tweak constructor
 MDImportButton.h/.m          floating button, picker, progress UI
+MDDownloadManager.h/.m       URL validation, direct downloads, yt-dlp wrapper
 MDImporter.h/.m              copy, metadata, artwork, StoreServices import
 MDServer.h/.m                loopback HTTP file server
 MDLog.h/.m                   file + console logging
@@ -190,6 +197,7 @@ docs/                        GitHub Pages site + generated repo index
 - iOS 15/16 are the targets. A future iOS release can break the private StoreServices classes.
 - Importing depends on Music's internal download queue. This is not an App Store-supported workflow.
 - The temporary server uses an unauthenticated loopback port while the import runs. It only serves random-token paths for files you selected, and it is not reachable from other devices.
+- URL downloads accept HTTPS only and reject private/local-host addresses. YouTube uses externally installed tools; their behavior and output depend on those packages and upstream sites. iOS may prevent `yt-dlp` execution inside the Music process; if it does, use **Import Files** after downloading elsewhere.
 - Keep backups of anything irreplaceable. This is a jailbreak tweak; use it at your own risk.
 
 ## License

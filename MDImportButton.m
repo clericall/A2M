@@ -1,4 +1,5 @@
 #import "MDImportButton.h"
+#import "MDDownloadManager.h"
 #import "MDImporter.h"
 #import "MDLog.h"
 
@@ -167,6 +168,7 @@ static UIViewController *MDTopViewController(void) {
 @property (nonatomic, strong, nullable) UIDocumentPickerViewController *picker;
 @property (nonatomic, strong) MDProgressHUD *hud;
 @property (nonatomic, assign) BOOL importing;
+@property (nonatomic, assign) BOOL downloading;
 @property (nonatomic, assign) BOOL positionRestored;
 - (void)layoutInWindow;
 - (void)savePosition;
@@ -257,8 +259,8 @@ static UIViewController *MDTopViewController(void) {
 		[self setImage:icon forState:UIControlStateNormal];
 		self.imageView.contentMode = UIViewContentModeScaleAspectFit;
 
-		self.accessibilityLabel = @"Import music";
-		self.accessibilityHint = @"Choose audio files to add to your Music library";
+		self.accessibilityLabel = @"Add music";
+		self.accessibilityHint = @"Import audio files or download from a URL";
 		[self addTarget:self action:@selector(buttonTapped) forControlEvents:UIControlEventTouchUpInside];
 
 		UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(buttonPanned:)];
@@ -344,7 +346,48 @@ static UIViewController *MDTopViewController(void) {
 }
 
 - (void)buttonTapped {
-	if (self.importing) {
+	if (self.importing || self.downloading) {
+		return;
+	}
+
+	UIViewController *presenter = MDTopViewController();
+	if (!presenter) {
+		MDLog(@"No view controller available to present the source menu.");
+		return;
+	}
+
+	UIAlertController *menu = [UIAlertController alertControllerWithTitle:@"Add Music"
+														 message:nil
+												  preferredStyle:UIAlertControllerStyleActionSheet];
+	__weak MDImportButton *weakSelf = self;
+	[menu addAction:[UIAlertAction actionWithTitle:@"Import Files"
+										 style:UIAlertActionStyleDefault
+									   handler:^(__unused UIAlertAction *action) {
+		dispatch_async(dispatch_get_main_queue(), ^{
+			[weakSelf showDocumentPicker];
+		});
+	}]];
+	[menu addAction:[UIAlertAction actionWithTitle:@"Download URL"
+										 style:UIAlertActionStyleDefault
+									   handler:^(__unused UIAlertAction *action) {
+		dispatch_async(dispatch_get_main_queue(), ^{
+			[weakSelf showDownloadPrompt];
+		});
+	}]];
+	[menu addAction:[UIAlertAction actionWithTitle:@"Cancel"
+										 style:UIAlertActionStyleCancel
+									   handler:nil]];
+
+	UIPopoverPresentationController *popover = menu.popoverPresentationController;
+	if (popover) {
+		popover.sourceView = self;
+		popover.sourceRect = self.bounds;
+	}
+	[presenter presentViewController:menu animated:YES completion:nil];
+}
+
+- (void)showDocumentPicker {
+	if (self.importing || self.downloading) {
 		return;
 	}
 
@@ -387,6 +430,90 @@ static UIViewController *MDTopViewController(void) {
 	[presenter presentViewController:picker animated:YES completion:nil];
 }
 
+- (void)showDownloadPrompt {
+	if (self.importing || self.downloading) {
+		return;
+	}
+
+	UIViewController *presenter = MDTopViewController();
+	if (!presenter) {
+		MDLog(@"No view controller available to present the URL prompt.");
+		return;
+	}
+
+	UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Download Music"
+		message:@"Paste a direct audio or YouTube HTTPS URL. Only download media you own or have permission to save. Spotify full tracks are not available for download."
+		preferredStyle:UIAlertControllerStyleAlert];
+	[alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+		textField.placeholder = @"https://…";
+		textField.keyboardType = UIKeyboardTypeURL;
+		textField.autocapitalizationType = UITextAutocapitalizationTypeNone;
+		textField.autocorrectionType = UITextAutocorrectionTypeNo;
+		textField.clearButtonMode = UITextFieldViewModeWhileEditing;
+	}];
+
+	[alert addAction:[UIAlertAction actionWithTitle:@"Cancel"
+										  style:UIAlertActionStyleCancel
+										handler:nil]];
+	__weak UIAlertController *weakAlert = alert;
+	__weak MDImportButton *weakSelf = self;
+	[alert addAction:[UIAlertAction actionWithTitle:@"Download"
+										  style:UIAlertActionStyleDefault
+										handler:^(__unused UIAlertAction *action) {
+		NSString *input = weakAlert.textFields.firstObject.text ?: @"";
+		dispatch_async(dispatch_get_main_queue(), ^{
+			[weakSelf beginDownloadURLString:input];
+		});
+	}]];
+	[presenter presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)beginDownloadURLString:(NSString *)input {
+	if (self.importing || self.downloading) {
+		return;
+	}
+
+	NSString *value = [input stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+	if (value.length == 0) {
+		[self showMessage:@"Enter a direct audio or YouTube HTTPS URL."];
+		return;
+	}
+	if ([value rangeOfString:@"://"].location == NSNotFound) {
+		value = [@"https://" stringByAppendingString:value];
+	}
+	NSURL *url = [NSURL URLWithString:value];
+	if (!url) {
+		[self showMessage:@"That URL is not valid."];
+		return;
+	}
+
+	self.downloading = YES;
+	self.enabled = NO;
+	self.alpha = 0.55;
+	[self.hud showInWindow:MDKeyWindow() text:@"Checking URL…"];
+
+	__weak MDImportButton *weakSelf = self;
+	[[MDDownloadManager sharedManager] downloadURL:url
+									 progress:^(NSString *status) {
+		[weakSelf.hud updateText:status];
+	} completion:^(NSURL *localFileURL, NSError *error) {
+		MDImportButton *strongSelf = weakSelf;
+		if (!strongSelf) {
+			return;
+		}
+
+		strongSelf.downloading = NO;
+		strongSelf.enabled = YES;
+		strongSelf.alpha = 1.0;
+		if (localFileURL && !error) {
+			[strongSelf beginImport:@[localFileURL]];
+		} else {
+			[strongSelf.hud hide];
+			[strongSelf showMessage:error.localizedDescription ?: @"The download failed."];
+		}
+	}];
+}
+
 - (void)documentPicker:(UIDocumentPickerViewController *)controller
 	didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
 	[self.picker dismissViewControllerAnimated:YES completion:^{
@@ -405,7 +532,7 @@ static UIViewController *MDTopViewController(void) {
 }
 
 - (void)beginImport:(NSArray<NSURL *> *)urls {
-	if (self.importing || urls.count == 0) {
+	if (self.importing || self.downloading || urls.count == 0) {
 		return;
 	}
 	self.importing = YES;

@@ -3,10 +3,15 @@ set -e
 
 mkdir -p /var/mobile/Media/MusicDrop/inbox
 mkdir -p /var/mobile/Media/MusicDrop/artwork
+mkdir -p /var/mobile/Media/MusicDrop/downloads
+mkdir -p /var/mobile/Media/MusicDrop/tmp
 chown -R mobile:mobile /var/mobile/Media/MusicDrop
 chmod 755 /var/mobile/Media/MusicDrop
 chmod 755 /var/mobile/Media/MusicDrop/inbox
 chmod 755 /var/mobile/Media/MusicDrop/artwork
+chmod 755 /var/mobile/Media/MusicDrop/downloads
+chmod 700 /var/mobile/Media/MusicDrop/tmp
+find /var/mobile/Media/MusicDrop/tmp -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
 
 # Relaunch Music so MobileSubstrate injects the tweak on next open.
 KILLALL_BIN="$(command -v killall 2>/dev/null || true)"

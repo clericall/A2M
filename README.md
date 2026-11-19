@@ -10,6 +10,8 @@ MusicDrop does not bypass DRM, rip Spotify tracks, or upload user files anywhere
 
 Direct HTTPS downloads work without extra packages. YouTube downloads require separately installed rootless `yt-dlp` and FFmpeg packages and should only be used for media you are allowed to save.
 
+When FFmpeg is installed, MusicDrop looks up lyrics on [LRCLIB](https://lrclib.net) using the track's title, artist, album, and duration, then embeds them into the audio file so the Music app shows them under **Now Playing → Lyrics**. The audio is never uploaded; only those four metadata fields are sent. If FFmpeg is missing, the lookup fails, or LRCLIB has no match, the song imports normally without lyrics.
+
 ## Requirements
 
 - Rootless jailbreak on iOS 15.0–16.7.x
@@ -17,6 +19,7 @@ Direct HTTPS downloads work without extra packages. YouTube downloads require se
 - Sileo or another package manager that supports `iphoneos-arm64`
 - DRM-free audio files the user is allowed to import
 - Optional for YouTube downloads: rootless `yt-dlp` and FFmpeg
+- Optional for lyrics: rootless FFmpeg
 
 The build target is iPhone X on palera1n rootless. Other rootless setups may work but are not separately tested.
 
@@ -76,6 +79,7 @@ If the workflow cannot commit the generated index, check that `GITHUB_TOKEN` has
 - Direct URL downloads reject HTML, unsupported formats, empty files, oversized files, non-HTTPS URLs, and private/local hosts.
 - YouTube downloads are single items, not playlists. They are converted to M4A and limited to 500 MB.
 - Spotify URLs return an error explaining that full tracks are DRM-protected.
+- With FFmpeg installed, lyrics are fetched from LRCLIB and embedded into the audio file. They appear in Music under the Now Playing lyrics view. Songs without a lyrics match still import normally.
 - Files without embedded artwork get a generated MusicDrop cover.
 - Metadata is read with `AVAsset`: title, artist, album, album artist, genre, composer, year, track number/count, duration, and artwork.
 - Imported songs are added to the normal Music library. Uninstalling MusicDrop does not remove them.
@@ -106,9 +110,10 @@ Input, artwork, downloads, and temporary files are pruned after seven days. The 
 3. URL downloads use `NSURLSession` for direct files or `yt-dlp`/FFmpeg for YouTube.
 4. Local files are copied into the MusicDrop inbox with a random token name.
 5. `AVURLAsset` reads duration, tags, and artwork. Artwork is resized to JPEG or replaced with a generated cover.
-6. A loopback HTTP server serves the registered file and artwork tokens with byte-range support.
-7. `StoreServices` is loaded with `dlopen`. MusicDrop builds `SSDownloadMetadata`, wraps it in an `SSDownload`, and adds it to an `SSDownloadQueue`.
-8. Music's store daemon fetches the loopback URL and adds the media to the library.
+6. `MDLyrics` queries LRCLIB with the track metadata and uses FFmpeg to embed the result as an ID3 `USLT` frame (MP3) or `©lyr` atom (M4A/MP4). This is what the Music app reads for its lyrics view.
+7. A loopback HTTP server serves the registered file and artwork tokens with byte-range support.
+8. `StoreServices` is loaded with `dlopen`. MusicDrop builds `SSDownloadMetadata`, wraps it in an `SSDownload`, and adds it to an `SSDownloadQueue`.
+9. Music's store daemon fetches the loopback URL and adds the media to the library.
 
 The private StoreServices code is isolated in `MDImporter.m`. The rest uses public UIKit, Foundation, and AVFoundation APIs.
 
@@ -150,6 +155,7 @@ Check:
 - The response has a supported extension or MIME type.
 - The file is not empty and is under 500 MB.
 - For YouTube, rootless `yt-dlp` and FFmpeg are installed and executable.
+- For lyrics, FFmpeg is installed and the log shows `Lyrics: embedded ...`. A failed lookup is logged and does not affect the import.
 
 iOS may prevent `yt-dlp` from being spawned from inside Music. If that happens, download the file into Files by another method and use **Import Files**.
 
@@ -213,7 +219,8 @@ MusicDrop.plist              MobileSubstrate filter for com.apple.Music
 MusicDrop.xm                 tweak constructor
 MDImportButton.h/.m          button, menus, picker, progress UI
 MDDownloadManager.h/.m       URL validation, direct downloads, yt-dlp wrapper
-MDImporter.h/.m              file copy, metadata, artwork, import
+MDLyrics.h/.m                LRCLIB lookup and embedding via FFmpeg
+MDImporter.h/.m              file copy, metadata, artwork, lyrics, import
 MDServer.h/.m                loopback HTTP file server
 MDLog.h/.m                   file and console logging
 layout/DEBIAN/               package scripts
@@ -232,6 +239,7 @@ docs/                        GitHub Pages site and generated index
 - The loopback server is unauthenticated but bound to `127.0.0.1`.
 - Downloads are capped at 500 MB.
 - YouTube support depends on external tools and upstream site behavior.
+- Lyrics depend on FFmpeg, network access to LRCLIB, and LRCLIB having a matching entry. iOS may block FFmpeg from launching inside Music, in which case lyrics are skipped. Music decides how to render embedded lyrics; some iOS versions or file types may not show them.
 - Spotify full-track downloads are not supported.
 - This is a jailbreak tweak. Keep backups of anything important.
 

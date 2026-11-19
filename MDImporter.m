@@ -1,4 +1,5 @@
 #import "MDImporter.h"
+#import "MDLyrics.h"
 #import "MDServer.h"
 #import "MDLog.h"
 
@@ -633,6 +634,15 @@ static NSData *MDDefaultArtwork(void) {
 	if (year <= 0) {
 		year = (int)[[NSCalendar currentCalendar] component:NSCalendarUnitYear fromDate:[NSDate date]];
 	}
+
+	// Lyrics are embedded into the file so Music shows them in the Now Playing
+	// lyrics view. Failure is non-fatal; the file imports without lyrics.
+	[[MDLyrics sharedLyrics] embedLyricsForTitle:title
+										 artist:artist
+										  album:album
+									   duration:[metadata[@"duration"] doubleValue]
+								  intoFileAtPath:destination
+									  extension:extension];
 
 	return @{
 		@"filePath": destination,

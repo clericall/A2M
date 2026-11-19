@@ -171,6 +171,20 @@ Expected:
 - Invalid, `http://`, private-network, HTML, empty, and oversized responses fail before importing.
 - The button returns to its normal enabled state after every success and failure.
 
+## Lyrics
+
+1. With FFmpeg installed, import or download a well-known song (for example Queen — Bohemian Rhapsody).
+2. Open the song, start playback, and open the Now Playing lyrics view.
+3. Repeat with a song LRCLIB does not have, and with FFmpeg temporarily unavailable.
+4. Repeat with an MP3 and an M4A so both tag formats are covered.
+
+Expected:
+
+- The log shows `Lyrics: embedded ...` and the song shows time-synced lyrics in Music.
+- Plain lyrics are used when synced lyrics are unavailable.
+- Missing matches or missing FFmpeg do not block the import and are logged.
+- Title, artist, artwork, and playback are unchanged by embedding.
+
 ## 10. Log and server diagnostics
 
 The log is at:

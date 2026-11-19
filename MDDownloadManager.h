@@ -16,6 +16,11 @@ typedef void (^MDDownloadCompletionBlock)(NSURL * _Nullable localFileURL,
 		   progress:(nullable MDDownloadProgressBlock)progress
 		 completion:(MDDownloadCompletionBlock)completion;
 
+/// Called only by the unsandboxed MusicDrop helper daemon.
++ (void)performYouTubeDownload:(NSURL *)url
+					  progress:(nullable MDDownloadProgressBlock)progress
+					completion:(MDDownloadCompletionBlock)completion;
+
 @end
 
 NS_ASSUME_NONNULL_END

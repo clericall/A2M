@@ -167,6 +167,7 @@ Expected:
 - Direct downloads save a supported file under `/var/mobile/Media/MusicDrop/downloads/` and then import like a local file.
 - YouTube downloads show progress, produce M4A with metadata/artwork, and import.
 - Missing `yt-dlp` or FFmpeg produces an actionable error without crashing Music.
+- The log shows `Helper: listening on 127.0.0.1:45454`. If instead the app says the helper is not running, check that the LaunchDaemon loaded: `launchctl print system/com.musiccc.musicdropd`.
 - Spotify URLs explain that full-track audio is DRM-protected and unavailable.
 - Invalid, `http://`, private-network, HTML, empty, and oversized responses fail before importing.
 - The button returns to its normal enabled state after every success and failure.

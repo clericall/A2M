@@ -12,14 +12,17 @@ Direct HTTPS downloads work without extra packages. YouTube downloads require se
 
 When FFmpeg is installed, MusicDrop looks up lyrics on [LRCLIB](https://lrclib.net) using the track's title, artist, album, and duration, then embeds them into the audio file so the Music app shows them under **Now Playing → Lyrics**. The audio is never uploaded; only those four metadata fields are sent. If FFmpeg is missing, the lookup fails, or LRCLIB has no match, the song imports normally without lyrics.
 
+iOS does not allow the Music app to launch external binaries. YouTube downloads and lyrics therefore run in a small rootless LaunchDaemon (`com.musiccc.musicdropd`) that ships inside the package. The tweak sends requests to it over `127.0.0.1:45454`. The daemon is started by the post-install script and at every boot.
+
 ## Requirements
 
 - Rootless jailbreak on iOS 15.0–16.7.x
 - MobileSubstrate or ElleKit
 - Sileo or another package manager that supports `iphoneos-arm64`
 - DRM-free audio files the user is allowed to import
-- Optional for YouTube downloads: rootless `yt-dlp` and FFmpeg
+- Optional for YouTube downloads: rootless `yt-dlp` and FFmpeg (for example from `https://apt.procurs.us/`)
 - Optional for lyrics: rootless FFmpeg
+- The bundled `musicdropd` LaunchDaemon must be allowed to run by the jailbreak
 
 The build target is iPhone X on palera1n rootless. Other rootless setups may work but are not separately tested.
 
@@ -218,12 +221,16 @@ control                      package metadata
 MusicDrop.plist              MobileSubstrate filter for com.apple.Music
 MusicDrop.xm                 tweak constructor
 MDImportButton.h/.m          button, menus, picker, progress UI
-MDDownloadManager.h/.m       URL validation, direct downloads, yt-dlp wrapper
+MDDownloadManager.h/.m       URL validation, direct downloads, download logic
+MDHelperClient.h/.m          tweak-side client for the helper daemon
+MDHelperProtocol.h           shared request keys and port
+musicdropd.m                 rootless LaunchDaemon (yt-dlp / FFmpeg runner)
 MDLyrics.h/.m                LRCLIB lookup and embedding via FFmpeg
 MDImporter.h/.m              file copy, metadata, artwork, lyrics, import
 MDServer.h/.m                loopback HTTP file server
 MDLog.h/.m                   file and console logging
 layout/DEBIAN/               package scripts
+layout/Library/LaunchDaemons/ helper daemon plist
 scripts/make_repo.py         .deb repository index generator
 scripts/make_icon.py         repository icon generator
 docs/                        GitHub Pages site and generated index
@@ -239,7 +246,8 @@ docs/                        GitHub Pages site and generated index
 - The loopback server is unauthenticated but bound to `127.0.0.1`.
 - Downloads are capped at 500 MB.
 - YouTube support depends on external tools and upstream site behavior.
-- Lyrics depend on FFmpeg, network access to LRCLIB, and LRCLIB having a matching entry. iOS may block FFmpeg from launching inside Music, in which case lyrics are skipped. Music decides how to render embedded lyrics; some iOS versions or file types may not show them.
+- Lyrics depend on FFmpeg, network access to LRCLIB, and LRCLIB having a matching entry. Music decides how to render embedded lyrics; some iOS versions or file types may not show them.
+- YouTube and lyrics require the helper daemon to be running. If it is blocked, MusicDrop reports that the helper is not running.
 - Spotify full-track downloads are not supported.
 - This is a jailbreak tweak. Keep backups of anything important.
 

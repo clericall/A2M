@@ -1,5 +1,6 @@
 #import "MDImporter.h"
-#import "MDLyrics.h"
+#import "MDHelperClient.h"
+#import "MDHelperProtocol.h"
 #import "MDServer.h"
 #import "MDLog.h"
 
@@ -635,14 +636,20 @@ static NSData *MDDefaultArtwork(void) {
 		year = (int)[[NSCalendar currentCalendar] component:NSCalendarUnitYear fromDate:[NSDate date]];
 	}
 
-	// Lyrics are embedded into the file so Music shows them in the Now Playing
-	// lyrics view. Failure is non-fatal; the file imports without lyrics.
-	[[MDLyrics sharedLyrics] embedLyricsForTitle:title
-										 artist:artist
-										  album:album
-									   duration:[metadata[@"duration"] doubleValue]
-								  intoFileAtPath:destination
-									  extension:extension];
+	// Lyrics are embedded by the unsandboxed helper (FFmpeg cannot be spawned
+	// from inside Music). Failure is non-fatal; the file imports without lyrics.
+	NSError *lyricsError = nil;
+	[MDHelperClient runOperation:@{
+		MDHelperOperationKey: MDHelperOperationLyrics,
+		MDHelperPathKey: destination,
+		MDHelperTitleKey: title,
+		MDHelperArtistKey: artist,
+		MDHelperAlbumKey: album,
+		MDHelperDurationKey: metadata[@"duration"] ?: @0,
+	} progress:nil error:&lyricsError];
+	if (lyricsError) {
+		MDLog(@"Lyrics: helper failed for '%@': %@", title, lyricsError.localizedDescription);
+	}
 
 	return @{
 		@"filePath": destination,

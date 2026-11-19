@@ -1,5 +1,20 @@
 #!/bin/sh
 
+DAEMON_PLIST=/var/jb/Library/LaunchDaemons/com.musiccc.musicdropd.plist
+LAUNCHCTL_BIN="$(command -v launchctl 2>/dev/null || true)"
+if [ -z "$LAUNCHCTL_BIN" ]; then
+	for candidate in /var/jb/bin/launchctl /var/jb/usr/bin/launchctl /usr/bin/launchctl /bin/launchctl; do
+		if [ -x "$candidate" ]; then
+			LAUNCHCTL_BIN="$candidate"
+			break
+		fi
+	done
+fi
+if [ -n "$LAUNCHCTL_BIN" ] && [ -f "$DAEMON_PLIST" ]; then
+	"$LAUNCHCTL_BIN" bootout system "$DAEMON_PLIST" 2>/dev/null || \
+		"$LAUNCHCTL_BIN" unload "$DAEMON_PLIST" 2>/dev/null || true
+fi
+
 # Imported songs and the MusicDrop folder are user data; keep them on uninstall.
 KILLALL_BIN="$(command -v killall 2>/dev/null || true)"
 if [ -z "$KILLALL_BIN" ] && [ -x /var/jb/usr/bin/killall ]; then

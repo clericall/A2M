@@ -13,6 +13,27 @@ chmod 755 /var/mobile/Media/MusicDrop/downloads
 chmod 700 /var/mobile/Media/MusicDrop/tmp
 find /var/mobile/Media/MusicDrop/tmp -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
 
+# Start the unsandboxed helper used for yt-dlp / FFmpeg.
+DAEMON_PLIST=/var/jb/Library/LaunchDaemons/com.musiccc.musicdropd.plist
+if [ -f "$DAEMON_PLIST" ]; then
+	chown root:wheel "$DAEMON_PLIST"
+	chmod 644 "$DAEMON_PLIST"
+fi
+LAUNCHCTL_BIN="$(command -v launchctl 2>/dev/null || true)"
+if [ -z "$LAUNCHCTL_BIN" ]; then
+	for candidate in /var/jb/bin/launchctl /var/jb/usr/bin/launchctl /usr/bin/launchctl /bin/launchctl; do
+		if [ -x "$candidate" ]; then
+			LAUNCHCTL_BIN="$candidate"
+			break
+		fi
+	done
+fi
+if [ -n "$LAUNCHCTL_BIN" ] && [ -f "$DAEMON_PLIST" ]; then
+	"$LAUNCHCTL_BIN" bootout system "$DAEMON_PLIST" 2>/dev/null || true
+	"$LAUNCHCTL_BIN" bootstrap system "$DAEMON_PLIST" 2>/dev/null || \
+		"$LAUNCHCTL_BIN" load "$DAEMON_PLIST" 2>/dev/null || true
+fi
+
 # Relaunch Music so MobileSubstrate injects the tweak on next open.
 KILLALL_BIN="$(command -v killall 2>/dev/null || true)"
 if [ -z "$KILLALL_BIN" ] && [ -x /var/jb/usr/bin/killall ]; then

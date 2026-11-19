@@ -1,4 +1,6 @@
 #import "MDDownloadManager.h"
+#import "MDHelperClient.h"
+#import "MDHelperProtocol.h"
 #import "MDLog.h"
 
 #import <arpa/inet.h>
@@ -271,9 +273,21 @@ static NSString *MDLastUsefulOutputLine(NSString *output) {
 
 	if (MDIsYouTubeHost(url.host)) {
 		MDReportProgress(progress, @"Starting YouTube download…");
-		dispatch_async(self.workQueue, ^{
-			[self downloadYouTubeURL:url progress:progress completion:completion];
-		});
+		[MDHelperClient runOperation:@{
+			MDHelperOperationKey: MDHelperOperationYouTube,
+			MDHelperURLKey: url.absoluteString,
+		} progress:^(NSString *status) {
+			MDReportProgress(progress, status);
+		} completion:^(NSDictionary *response, NSError *helperError) {
+			if (helperError) {
+				MDFinishDownload(completion, nil, helperError);
+				return;
+			}
+			NSString *path = response[MDHelperResultPathKey];
+			MDFinishDownload(completion,
+							 path.length > 0 ? [NSURL fileURLWithPath:path] : nil,
+							 path.length > 0 ? nil : MDDownloadError(47, @"The helper returned no file."));
+		}];
 		return;
 	}
 
@@ -391,9 +405,10 @@ static NSString *MDLastUsefulOutputLine(NSString *output) {
 	[task resume];
 }
 
-- (void)downloadYouTubeURL:(NSURL *)url
-				   progress:(MDDownloadProgressBlock)progress
-				 completion:(MDDownloadCompletionBlock)completion {
+/// Runs in the helper daemon, which is not sandboxed and can spawn yt-dlp.
++ (void)performYouTubeDownload:(NSURL *)url
+					  progress:(MDDownloadProgressBlock)progress
+					completion:(MDDownloadCompletionBlock)completion {
 	NSError *directoryError = nil;
 	if (!MDEnsureDownloadDirectories(&directoryError)) {
 		MDFinishDownload(completion, nil, directoryError);

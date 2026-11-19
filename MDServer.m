@@ -17,7 +17,6 @@
 
 @interface MDServer () {
 	int _listenFD;
-	uint16_t _port;
 	dispatch_queue_t _acceptQueue;
 	dispatch_queue_t _connectionQueue;
 	NSMutableDictionary<NSString *, NSString *> *_routes;

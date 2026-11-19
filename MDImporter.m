@@ -65,7 +65,100 @@ static NSString *MDSafeString(id value) {
 	return nil;
 }
 
+typedef NS_ENUM(NSInteger, MDMetadataField) {
+	MDMetadataFieldGenre,
+	MDMetadataFieldComposer,
+	MDMetadataFieldCopyright,
+	MDMetadataFieldTrackNumber,
+	MDMetadataFieldYear,
+	MDMetadataFieldArtwork,
+	MDMetadataFieldAlbumArtist,
+};
+
+static NSArray<NSString *> *MDIdentifiersForField(MDMetadataField field) {
+	static NSDictionary<NSNumber *, NSArray<NSString *> *> *groups;
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{
+		groups = @{
+			@(MDMetadataFieldGenre): @[
+				AVMetadataIdentifierID3MetadataContentType,
+				AVMetadataIdentifieriTunesMetadataUserGenre,
+				AVMetadataIdentifierQuickTimeMetadataGenre,
+				AVMetadataIdentifierQuickTimeUserDataGenre,
+				AVMetadataIdentifier3GPUserDataGenre,
+			],
+			@(MDMetadataFieldComposer): @[
+				AVMetadataIdentifierID3MetadataComposer,
+				AVMetadataIdentifieriTunesMetadataComposer,
+				AVMetadataIdentifierQuickTimeMetadataComposer,
+				AVMetadataIdentifierQuickTimeUserDataComposer,
+			],
+			@(MDMetadataFieldCopyright): @[
+				AVMetadataIdentifierID3MetadataCopyright,
+				AVMetadataIdentifierID3MetadataCopyrightInformation,
+				AVMetadataIdentifieriTunesMetadataCopyright,
+				AVMetadataIdentifierQuickTimeMetadataCopyright,
+				AVMetadataIdentifierQuickTimeUserDataCopyright,
+				AVMetadataIdentifierISOUserDataCopyright,
+				AVMetadataIdentifier3GPUserDataCopyright,
+			],
+			@(MDMetadataFieldTrackNumber): @[
+				AVMetadataIdentifierID3MetadataTrackNumber,
+				AVMetadataIdentifieriTunesMetadataTrackNumber,
+				AVMetadataIdentifierQuickTimeUserDataTrack,
+			],
+			@(MDMetadataFieldYear): @[
+				AVMetadataIdentifierID3MetadataYear,
+				AVMetadataIdentifierID3MetadataDate,
+				AVMetadataIdentifierID3MetadataRecordingDates,
+				AVMetadataIdentifierID3MetadataRecordingTime,
+				AVMetadataIdentifierID3MetadataReleaseTime,
+				AVMetadataIdentifierID3MetadataOriginalReleaseTime,
+				AVMetadataIdentifierID3MetadataOriginalReleaseYear,
+				AVMetadataIdentifieriTunesMetadataReleaseDate,
+				AVMetadataIdentifierQuickTimeMetadataYear,
+				AVMetadataIdentifierQuickTimeMetadataCreationDate,
+				AVMetadataIdentifierQuickTimeUserDataCreationDate,
+				AVMetadataIdentifierISOUserDataDate,
+				AVMetadataIdentifier3GPUserDataRecordingYear,
+			],
+			@(MDMetadataFieldArtwork): @[
+				AVMetadataIdentifierID3MetadataAttachedPicture,
+				AVMetadataIdentifierQuickTimeMetadataArtwork,
+			],
+			@(MDMetadataFieldAlbumArtist): @[
+				AVMetadataIdentifieriTunesMetadataAlbumArtist,
+			],
+		};
+	});
+	return groups[@(field)] ?: @[];
+}
+
+static BOOL MDIdentifierMatchesField(NSString *identifier, MDMetadataField field) {
+	return [MDIdentifiersForField(field) containsObject:identifier];
+}
+
+static NSData *MDArtworkDataFromItem(AVMetadataItem *item) {
+	id value = item.value;
+	NSData *data = [value isKindOfClass:[NSData class]] ? value : nil;
+	if (!data && [value isKindOfClass:[NSDictionary class]]) {
+		id inner = ((NSDictionary *)value)[@"data"];
+		if ([inner isKindOfClass:[NSData class]]) {
+			data = inner;
+		}
+	}
+	if (!data && [item.dataValue isKindOfClass:[NSData class]]) {
+		data = item.dataValue;
+	}
+	return data.length > 0 ? data : nil;
+}
+
 static int MDYearFromValue(id value) {
+	if ([value isKindOfClass:[NSDate class]]) {
+		NSDateComponents *components = [[NSCalendar currentCalendar] components:NSCalendarUnitYear
+																	   fromDate:(NSDate *)value];
+		return components.year > 0 ? (int)components.year : 0;
+	}
 	NSString *string = MDSafeString(value);
 	if (string.length < 4) {
 		return 0;
@@ -378,54 +471,65 @@ static NSData *MDDefaultArtwork(void) {
 					result[@"artist"] = MDSafeString(value);
 				} else if ([commonKey isEqualToString:AVMetadataCommonKeyAlbumName] && [result[@"album"] length] == 0) {
 					result[@"album"] = MDSafeString(value);
-				} else if ([commonKey isEqualToString:AVMetadataCommonKeyGenre] && [result[@"genre"] length] == 0) {
-					result[@"genre"] = MDSafeString(value);
-				} else if ([commonKey isEqualToString:AVMetadataCommonKeyComposer] && [result[@"composer"] length] == 0) {
-					result[@"composer"] = MDSafeString(value);
-				} else if ([commonKey isEqualToString:AVMetadataCommonKeyCopyright]) {
-					result[@"copyright"] = MDSafeString(value);
+				} else if ([commonKey isEqualToString:AVMetadataCommonKeyCopyrights]) {
+					NSString *copyright = MDSafeString(value);
+					if (copyright.length > 0 && [result[@"copyright"] length] == 0) {
+						result[@"copyright"] = copyright;
+					}
 				} else if ([commonKey isEqualToString:AVMetadataCommonKeyCreationDate]) {
 					int year = MDYearFromValue(value);
-					if (year > 0) {
+					if (year > 0 && !result[@"year"]) {
 						result[@"year"] = @(year);
 					}
 				} else if ([commonKey isEqualToString:AVMetadataCommonKeyArtwork]) {
-					NSData *data = nil;
-					if ([value isKindOfClass:[NSData class]]) {
-						data = value;
-					} else if ([value isKindOfClass:[NSDictionary class]]) {
-						id inner = ((NSDictionary *)value)[@"data"];
-						if ([inner isKindOfClass:[NSData class]]) {
-							data = inner;
-						}
-					}
-					if (!data && [item.dataValue isKindOfClass:[NSData class]]) {
-						data = item.dataValue;
-					}
-					if (data.length > 0 && !result[@"artworkData"]) {
+					NSData *data = MDArtworkDataFromItem(item);
+					if (data && !result[@"artworkData"]) {
 						result[@"artworkData"] = data;
 					}
 				}
 
-				if ([identifier containsString:@"trkn"]) {
+				if (MDIdentifierMatchesField(identifier, MDMetadataFieldGenre) ||
+					[identifier containsString:@"TCON"]) {
+					NSString *genre = MDSafeString(value);
+					if (genre.length > 0 && [result[@"genre"] length] == 0) {
+						result[@"genre"] = genre;
+					}
+				} else if (MDIdentifierMatchesField(identifier, MDMetadataFieldComposer) ||
+						   [identifier containsString:@"TCOM"]) {
+					NSString *composer = MDSafeString(value);
+					if (composer.length > 0 && [result[@"composer"] length] == 0) {
+						result[@"composer"] = composer;
+					}
+				} else if (MDIdentifierMatchesField(identifier, MDMetadataFieldCopyright)) {
+					NSString *copyright = MDSafeString(value);
+					if (copyright.length > 0 && [result[@"copyright"] length] == 0) {
+						result[@"copyright"] = copyright;
+					}
+				} else if (MDIdentifierMatchesField(identifier, MDMetadataFieldTrackNumber) ||
+						   [identifier containsString:@"trkn"] ||
+						   [identifier containsString:@"TRCK"]) {
 					int track = [result[@"trackNumber"] intValue];
 					int count = [result[@"trackCount"] intValue];
 					MDReadTrackNumbers(value, &track, &count);
 					result[@"trackNumber"] = @(track);
 					result[@"trackCount"] = @(count);
-				} else if ([identifier containsString:@"covr"] && !result[@"artworkData"]) {
-					NSData *data = [value isKindOfClass:[NSData class]] ? value : item.dataValue;
-					if ([data isKindOfClass:[NSData class]] && data.length > 0) {
-						result[@"artworkData"] = data;
-					}
-				} else if ([identifier containsString:@"day"] || [identifier containsString:@"year"]) {
+				} else if (MDIdentifierMatchesField(identifier, MDMetadataFieldYear)) {
 					int year = MDYearFromValue(value);
-					if (year > 0) {
+					if (year > 0 && !result[@"year"]) {
 						result[@"year"] = @(year);
 					}
-				} else if ([identifier containsString:@"aART"]) {
+				} else if (MDIdentifierMatchesField(identifier, MDMetadataFieldArtwork) ||
+						   [identifier containsString:@"covr"] ||
+						   [identifier containsString:@"APIC"]) {
+					NSData *data = MDArtworkDataFromItem(item);
+					if (data && !result[@"artworkData"]) {
+						result[@"artworkData"] = data;
+					}
+				} else if (MDIdentifierMatchesField(identifier, MDMetadataFieldAlbumArtist) ||
+						   [identifier containsString:@"aART"] ||
+						   [identifier containsString:@"TPE2"]) {
 					NSString *albumArtist = MDSafeString(value);
-					if (albumArtist.length > 0) {
+					if (albumArtist.length > 0 && [result[@"albumArtist"] length] == 0) {
 						result[@"albumArtist"] = albumArtist;
 					}
 				}
@@ -704,7 +808,7 @@ static NSData *MDDefaultArtwork(void) {
 		}
 
 		MDLog(@"Enqueued '%@' by '%@' (%@ -> %@)", title, artist,
-			  item[@"filePath"].lastPathComponent, audioURL.absoluteString);
+			  [(NSString *)item[@"filePath"] lastPathComponent], audioURL.absoluteString);
 		return YES;
 	} @catch (NSException *exception) {
 		MDLog(@"Import exception: %@", exception.reason);

@@ -37,7 +37,8 @@ void MDLogv(NSString *format, ...) {
 		[fm createDirectoryAtPath:directory withIntermediateDirectories:YES attributes:nil error:nil];
 
 		NSDictionary *attributes = [fm attributesOfItemAtPath:MDLogPath error:nil];
-		if ([attributes fileSize] > 1024 * 1024) {
+		NSNumber *fileSize = attributes[NSFileSize];
+		if (fileSize.unsignedLongLongValue > 1024 * 1024) {
 			NSString *oldPath = [MDLogPath stringByAppendingString:@".old"];
 			[fm removeItemAtPath:oldPath error:nil];
 			[fm moveItemAtPath:MDLogPath toPath:oldPath error:nil];

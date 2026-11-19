@@ -62,9 +62,12 @@ jobs:
       - name: Dump build log on failure
         if: failure()
         run: |
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          cat /tmp/musicdrop-build.log >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cp /tmp/musicdrop-build.log docs/build-error.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f docs/build-error.txt
+          git commit -m "Upload build error log [skip ci]" || true
+          git push origin "HEAD:${GITHUB_REF_NAME}" || true
 
       - name: Generate repository index
         run: |

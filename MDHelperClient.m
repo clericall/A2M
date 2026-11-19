@@ -36,6 +36,8 @@ static NSString *MDEncodeLine(NSString *prefix, NSString *value) {
 	return [NSString stringWithFormat:@"%@ %@\n", prefix, [data base64EncodedStringWithOptions:0]];
 }
 
+@implementation MDHelperClient
+
 + (nullable NSDictionary *)runOperation:(NSDictionary *)operation
 							   progress:(nullable void (^)(NSString *status))progress
 								  error:(NSError **)error {

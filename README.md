@@ -34,7 +34,7 @@ https://<owner>.github.io/<repo>/
 For example:
 
 ```text
-https://clericall.github.io/A2M/
+https://clericall.github.io/a2m/
 ```
 
 On the device:

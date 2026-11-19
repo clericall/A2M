@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MusicDrop — import your own music on iPhone</title>
+<meta name="description" content="MusicDrop adds an Import button to the iOS Music app. Pick MP3, M4A, WAV, AIFF, or FLAC files and add them to your library without a computer.">
+<link rel="icon" href="CydiaIcon.png">
+<link rel="apple-touch-icon" href="CydiaIcon.png">
+<meta name="theme-color" content="#120b10">
+<style>
+  :root {
+    --bg: #120b10;
+    --bg-2: #1a1016;
+    --card: rgba(255, 255, 255, 0.055);
+    --card-strong: rgba(255, 255, 255, 0.085);
+    --border: rgba(255, 255, 255, 0.10);
+    --text: #fff5f7;
+    --muted: #b9a6ad;
+    --pink: #ff375f;
+    --pink-2: #ff6b8a;
+    --green: #53d769;
+    --radius: 22px;
+    --max: 1120px;
+    --shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(900px 500px at 80% -10%, rgba(255, 55, 95, 0.22), transparent 65%),
+      radial-gradient(700px 500px at 8% 10%, rgba(120, 40, 90, 0.22), transparent 60%),
+      var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: inherit; }
+  img { max-width: 100%; display: block; }
+  .wrap { width: min(calc(100% - 40px), var(--max)); margin: 0 auto; }
+
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    background: rgba(18, 11, 16, 0.72);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 68px;
+    gap: 20px;
+  }
+  .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; font-weight: 750; letter-spacing: -0.02em; font-size: 18px; }
+  .brand-mark {
+    width: 36px; height: 36px; border-radius: 11px;
+    background: linear-gradient(145deg, var(--pink-2), #b00045);
+    display: grid; place-items: center;
+    box-shadow: 0 8px 24px rgba(255, 55, 95, 0.3);
+  }
+  .brand-mark svg { width: 20px; height: 20px; }
+  .nav-links { display: flex; align-items: center; gap: 26px; }
+  .nav-links a { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 560; }
+  .nav-links a:hover { color: var(--text); }
+  .nav .mini-cta {
+    color: var(--text);
+    border: 1px solid var(--border);
+    background: var(--card);
+    padding: 8px 14px;
+    border-radius: 999px;
+  }
+  .nav .mini-cta:hover { background: var(--card-strong); }
+
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+    gap: 56px;
+    align-items: center;
+    padding: 82px 0 66px;
+  }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 55, 95, 0.28);
+    background: rgba(255, 55, 95, 0.09);
+    color: #ffc3cf;
+    font-size: 12px;
+    font-weight: 680;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pink); box-shadow: 0 0 0 4px rgba(255, 55, 95, 0.14); }
+  h1 {
+    margin: 22px 0 18px;
+    font-size: clamp(44px, 6.2vw, 76px);
+    line-height: 0.98;
+    letter-spacing: -0.055em;
+    font-weight: 820;
+  }
+  h1 em { font-style: normal; color: var(--pink-2); }
+  .lede { max-width: 530px; margin: 0 0 30px; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .btn {
+    appearance: none;
+    border: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 50px;
+    padding: 0 20px;
+    border-radius: 14px;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 720;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform .16s ease, background .16s ease, border-color .16s ease;
+  }
+  .btn:active { transform: scale(0.975); }
+  .btn-primary {
+    background: linear-gradient(180deg, #ff4d72, #e91950);
+    color: #fff;
+    box-shadow: 0 12px 30px rgba(255, 55, 95, 0.28);
+  }
+  .btn-primary:hover { background: linear-gradient(180deg, #ff6283, #f22259); }
+  .btn-ghost { background: var(--card); border: 1px solid var(--border); color: var(--text); }
+  .btn-ghost:hover { background: var(--card-strong); }
+  .btn svg { width: 17px; height: 17px; }
+  .hero-meta { display: flex; flex-wrap: wrap; gap: 16px 22px; margin-top: 24px; color: #8f7e85; font-size: 13px; }
+  .hero-meta span { display: inline-flex; align-items: center; gap: 7px; }
+  .hero-meta b { color: #d9c9cf; font-weight: 620; }
+
+  .phone-stage { position: relative; display: flex; justify-content: center; }
+  .phone {
+    position: relative;
+    width: min(330px, 86vw);
+    aspect-ratio: 330 / 670;
+    border-radius: 46px;
+    padding: 12px;
+    background: linear-gradient(160deg, #3b2631, #171018 55%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: var(--shadow);
+    transform: rotate(3deg);
+  }
+  .phone::after {
+    content: "";
+    position: absolute;
+    inset: -20px;
+    z-index: -1;
+    background: radial-gradient(60% 50% at 50% 45%, rgba(255, 55, 95, 0.28), transparent 72%);
+    filter: blur(18px);
+  }
+  .screen {
+    height: 100%;
+    border-radius: 36px;
+    overflow: hidden;
+    background: linear-gradient(180deg, #20141b, #100b0f 70%);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    display: flex;
+    flex-direction: column;
+  }
+  .island {
+    width: 96px; height: 26px;
+    margin: 7px auto 0;
+    border-radius: 999px;
+    background: #050405;
+    position: relative;
+  }
+  .screen-head { padding: 18px 18px 10px; }
+  .screen-kicker { color: #8d7a83; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .screen-head h2 { margin: 5px 0 0; font-size: 25px; letter-spacing: -0.04em; }
+  .mini-list { padding: 8px 12px; display: grid; gap: 8px; }
+  .mini-row {
+    display: grid;
+    grid-template-columns: 38px 1fr 18px;
+    gap: 10px;
+    align-items: center;
+    padding: 8px;
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.045);
+  }
+  .mini-art {
+    width: 38px; height: 38px; border-radius: 8px;
+    background: linear-gradient(145deg, #ff5c7e, #8f0b3c);
+    display: grid; place-items: center;
+    font-size: 17px;
+  }
+  .mini-art.alt { background: linear-gradient(145deg, #6957ff, #25116d); }
+  .mini-art.alt2 { background: linear-gradient(145deg, #29c17a, #0b5137); }
+  .mini-copy { min-width: 0; }
+  .mini-copy strong { display: block; font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mini-copy small { display: block; color: #9c8991; font-size: 10px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mini-more { color: #6f6067; font-size: 16px; text-align: center; }
+  .mini-fab {
+    position: absolute;
+    right: 34px;
+    bottom: 98px;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    background: linear-gradient(145deg, #ff5a7c, #eb154f);
+    box-shadow: 0 12px 28px rgba(255, 55, 95, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+  }
+  .mini-fab svg { width: 24px; height: 24px; }
+  .mini-tabbar {
+    margin-top: auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    padding: 12px 12px 22px;
+    display: flex;
+    justify-content: space-around;
+    color: #776870;
+    font-size: 15px;
+  }
+  .mini-tabbar .active { color: var(--pink-2); }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 26px;
+  }
+  .stat { background: var(--card); border: 1px solid var(--border); border-radius: 15px; padding: 13px 14px; }
+  .stat span { display: block; color: #8f7e85; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 650; }
+  .stat strong { display: block; margin-top: 3px; font-size: 16px; letter-spacing: -0.02em; }
+
+  section { padding: 54px 0; }
+  .section-head { max-width: 650px; margin-bottom: 28px; }
+  .section-kicker { color: var(--pink-2); font-size: 12px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.13em; }
+  h2 { margin: 9px 0 10px; font-size: clamp(28px, 3.6vw, 42px); line-height: 1.06; letter-spacing: -0.045em; }
+  .section-head p { margin: 0; color: var(--muted); }
+
+  .features { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .feature {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.035));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px;
+  }
+  .feature .icon {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    display: grid; place-items: center;
+    background: rgba(255, 55, 95, 0.13);
+    color: #ff8fa5;
+    margin-bottom: 16px;
+  }
+  .feature .icon svg { width: 21px; height: 21px; }
+  .feature h3 { margin: 0 0 7px; font-size: 15px; letter-spacing: -0.02em; }
+  .feature p { margin: 0; color: var(--muted); font-size: 13.5px; }
+
+  .install-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 16px; align-items: start; }
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+  .steps { display: grid; gap: 20px; }
+  .step { display: grid; grid-template-columns: 30px 1fr; gap: 14px; }
+  .step .num {
+    width: 30px; height: 30px;
+    border-radius: 10px;
+    display: grid; place-items: center;
+    background: rgba(255, 55, 95, 0.14);
+    color: #ffa3b4;
+    font-size: 13px;
+    font-weight: 780;
+  }
+  .step h3 { margin: 2px 0 4px; font-size: 15px; }
+  .step p { margin: 0; color: var(--muted); font-size: 13.5px; }
+  .code-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 10px 10px 10px 13px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+  .code-row code {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #ffd1da;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+  }
+  .icon-btn {
+    flex: none;
+    width: 32px; height: 32px;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text);
+    display: grid; place-items: center;
+    cursor: pointer;
+  }
+  .icon-btn:hover { background: rgba(255, 255, 255, 0.12); }
+  .icon-btn svg { width: 15px; height: 15px; }
+
+  .compat-list { display: grid; gap: 0; margin-top: 4px; }
+  .compat-row { display: flex; justify-content: space-between; gap: 16px; padding: 13px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.075); font-size: 13.5px; }
+  .compat-row:last-child { border-bottom: 0; }
+  .compat-row span { color: var(--muted); }
+  .compat-row b { font-weight: 620; text-align: right; }
+  .pill-ok { color: #9ff0b0; }
+  .note { margin-top: 18px; padding: 13px 14px; background: rgba(255, 55, 95, 0.08); border: 1px solid rgba(255, 55, 95, 0.16); border-radius: 13px; color: #ffc9d3; font-size: 12.5px; }
+
+  .format-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
+  .chip { padding: 5px 9px; border-radius: 7px; background: rgba(255, 255, 255, 0.07); border: 1px solid var(--border); color: #e2d4d9; font-size: 11.5px; font-weight: 650; }
+
+  details {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 4px 0;
+  }
+  details summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 17px 30px 17px 0;
+    font-weight: 650;
+    font-size: 15px;
+    position: relative;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::after {
+    content: "+";
+    position: absolute;
+    right: 4px;
+    top: 14px;
+    color: var(--pink-2);
+    font-size: 22px;
+    font-weight: 400;
+    transition: transform .18s ease;
+  }
+  details[open] summary::after { transform: rotate(45deg); }
+  details p { margin: 0 0 18px; color: var(--muted); font-size: 14px; max-width: 760px; }
+  details code { color: #ffd1da; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; word-break: break-all; }
+
+  .faq-grid { display: grid; grid-template-columns: 0.75fr 1.25fr; gap: 42px; align-items: start; }
+
+  footer { margin-top: 30px; border-top: 1px solid rgba(255, 255, 255, 0.07); padding: 26px 0 40px; color: #8f7e85; font-size: 12.5px; }
+  .footer-row { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  footer a { color: #cbb9c0; text-decoration: none; }
+  footer a:hover { color: #fff; }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translate(-50%, 12px);
+    background: #fff;
+    color: #1b1116;
+    padding: 10px 16px;
+    border-radius: 11px;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .18s ease, transform .18s ease;
+    z-index: 50;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (max-width: 920px) {
+    .hero { grid-template-columns: 1fr; gap: 44px; padding-top: 56px; }
+    .phone-stage { order: -1; }
+    .phone { transform: rotate(0deg); width: min(300px, 78vw); }
+    .features { grid-template-columns: repeat(2, 1fr); }
+    .install-grid, .faq-grid { grid-template-columns: 1fr; gap: 18px; }
+    .nav-links a:not(.mini-cta) { display: none; }
+    .stats { max-width: 440px; }
+  }
+  @media (max-width: 520px) {
+    .wrap { width: min(calc(100% - 28px), var(--max)); }
+    .hero { padding: 40px 0 42px; }
+    h1 { font-size: 46px; }
+    .features { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: 1fr; }
+    .stat { display: flex; align-items: baseline; justify-content: space-between; }
+    .stat strong { margin-top: 0; }
+    section { padding: 38px 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#top" aria-label="MusicDrop home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M9 18V6.8c0-.5.3-.9.8-1l6-1.6c.6-.2 1.2.3 1.2.9V16" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><ellipse cx="7" cy="18" rx="2.4" ry="1.9" fill="#fff"/><ellipse cx="15" cy="16" rx="2.4" ry="1.9" fill="#fff"/></svg>
+      </span>
+      MusicDrop
+    </a>
+    <nav class="nav-links" aria-label="Main">
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="#faq">FAQ</a>
+      <a class="mini-cta" href="#install">Add repo</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <div class="wrap hero">
+    <div>
+      <span class="eyebrow"><span class="dot"></span> Rootless · iOS 15–16</span>
+      <h1>Your music.<br>Your files.<br><em>No computer.</em></h1>
+      <p class="lede">MusicDrop puts an Import button inside the iOS Music app. Pick MP3, M4A, WAV, AIFF, or FLAC files from Files, then let Music add them to your library like any other track.</p>
+      <div class="actions">
+        <a class="btn btn-primary" data-sileo href="#install">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 4.2-4.2M12 15l-4.2-4.2M5 18.5V20h14v-1.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Add to Sileo
+        </a>
+        <button class="btn btn-ghost" id="copy-repo" type="button">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="8" y="8" width="11" height="12" rx="2.2" stroke="currentColor" stroke-width="1.8"/><path d="M16 8V5.8A1.8 1.8 0 0 0 14.2 4H5.8A1.8 1.8 0 0 0 4 5.8v9.4A1.8 1.8 0 0 0 5.8 17H8" stroke="currentColor" stroke-width="1.8"/></svg>
+          Copy repo URL
+        </button>
+      </div>
+      <div class="hero-meta">
+        <span><b>iPhone X</b> tested target</span>
+        <span><b>palera1n</b> rootless</span>
+        <span><b>Open source</b> tweak</span>
+      </div>
+    </div>
+
+    <div class="phone-stage">
+      <div class="phone" aria-hidden="true">
+        <div class="screen">
+          <div class="island"></div>
+          <div class="screen-head">
+            <div class="screen-kicker">Library</div>
+            <h2>Recently Added</h2>
+          </div>
+          <div class="mini-list">
+            <div class="mini-row">
+              <div class="mini-art">♪</div>
+              <div class="mini-copy"><strong>Midnight Drive</strong><small>Demo Artist · Demo Album</small></div>
+              <div class="mini-more">⋯</div>
+            </div>
+            <div class="mini-row">
+              <div class="mini-art alt">♫</div>
+              <div class="mini-copy"><strong>Static Bloom</strong><small>Another Artist · Night Tapes</small></div>
+              <div class="mini-more">⋯</div>
+            </div>
+            <div class="mini-row">
+              <div class="mini-art alt2">♬</div>
+              <div class="mini-copy"><strong>Paper Satellites</strong><small>Third Artist · Home Recordings</small></div>
+              <div class="mini-more">⋯</div>
+            </div>
+          </div>
+          <div class="mini-fab">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 5v9m0 0 3.6-3.6M12 14l-3.6-3.6M5.5 18.5v1h13v-1" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="mini-tabbar">
+            <span class="active">◉</span><span>⌕</span><span>▤</span><span>♫</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="stats" aria-label="Package details">
+      <div class="stat"><span>Latest version</span><strong data-version>1.0.0</strong></div>
+      <div class="stat"><span>Package size</span><strong data-size>—</strong></div>
+      <div class="stat"><span>Updated</span><strong data-updated>—</strong></div>
+    </div>
+  </div>
+
+  <section id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="section-kicker">Why MusicDrop</div>
+        <h2>Built for the files you already own.</h2>
+        <p>No cloud upload, no desktop sync, no repackaged copy of someone else's tweak. MusicDrop reads your file, then hands it to the Music app's own import pipeline.</p>
+      </div>
+      <div class="features">
+        <div class="feature">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="3.5" width="16" height="17" rx="2.6" stroke="currentColor" stroke-width="1.7"/><path d="M8 7.5h8M8 11h8M8 14.5h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div>
+          <h3>On-device import</h3>
+          <p>Pick files with the system document picker. Everything happens on the phone, including tagging and artwork.</p>
+        </div>
+        <div class="feature">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 4v11m0 0 4-4m-4 4-4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 18.5V20h14v-1.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+          <h3>Tags and art</h3>
+          <p>Reads embedded title, artist, album, genre, year, track numbers, and cover art. Missing art gets a MusicDrop cover.</p>
+        </div>
+        <div class="feature">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v4.5h4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <h3>No PC at runtime</h3>
+          <p>Build once with GitHub Actions. After that, import music from Files whenever you want, without SSH or a cable.</p>
+        </div>
+        <div class="feature">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="m12 3 7 3v5.3c0 4.3-2.9 7.3-7 9.7-4.1-2.4-7-5.4-7-9.7V6l7-3Z" stroke="currentColor" stroke-width="1.7"/><path d="m9 12 2.1 2.1L15.5 9.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <h3>Small and local</h3>
+          <p>A single tweak, a loopback file server, and your existing library. No accounts, analytics, or external uploads.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="section-kicker">Install</div>
+        <h2>Add the repo, install, open Music.</h2>
+        <p>Works on rootless jailbreaks that provide MobileSubstrate or ElleKit. The package is built for <code>iphoneos-arm64</code>.</p>
+      </div>
+      <div class="install-grid">
+        <div class="panel">
+          <div class="steps">
+            <div class="step">
+              <div class="num">1</div>
+              <div>
+                <h3>Copy the repo URL</h3>
+                <p>Open Sileo, go to Sources, tap Edit, then Add Source and paste this address.</p>
+                <div class="code-row">
+                  <code id="repo-url">Loading…</code>
+                  <button class="icon-btn" id="copy-repo-inline" type="button" aria-label="Copy repository URL">
+                    <svg viewBox="0 0 24 24" fill="none"><rect x="8" y="8" width="11" height="12" rx="2.2" stroke="currentColor" stroke-width="1.8"/><path d="M16 8V5.8A1.8 1.8 0 0 0 14.2 4H5.8A1.8 1.8 0 0 0 4 5.8v9.4A1.8 1.8 0 0 0 5.8 17H8" stroke="currentColor" stroke-width="1.8"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="step">
+              <div class="num">2</div>
+              <div>
+                <h3>Install MusicDrop</h3>
+                <p>Search the source for MusicDrop and install it. Sileo will respring or Music will relaunch so the tweak can load.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="num">3</div>
+              <div>
+                <h3>Tap Import in Music</h3>
+                <p>Open Music, tap the pink floating button, and choose audio files from Files or iCloud Drive. Keep Music open while the import finishes.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3 style="margin:0 0 10px; font-size:15px;">Compatibility</h3>
+          <div class="compat-list">
+            <div class="compat-row"><span>iOS</span><b>15.0 – 16.7.x</b></div>
+            <div class="compat-row"><span>Jailbreak</span><b>palera1n rootless</b></div>
+            <div class="compat-row"><span>Package arch</span><b>iphoneos-arm64</b></div>
+            <div class="compat-row"><span>Dependency</span><b>mobilesubstrate / ElleKit</b></div>
+            <div class="compat-row"><span>Status</span><b class="pill-ok">Built for iPhone X</b></div>
+          </div>
+          <div class="format-chips" aria-label="Supported formats">
+            <span class="chip">MP3</span><span class="chip">M4A</span><span class="chip">AAC</span><span class="chip">ALAC</span><span class="chip">WAV</span><span class="chip">AIFF</span><span class="chip">FLAC</span><span class="chip">M4R</span><span class="chip">M4B</span><span class="chip">MP4</span>
+          </div>
+          <div class="note">OGG, Opus, and WMA are not decoded by the iOS Music app. Convert those to MP3 or M4A first.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap faq-grid">
+      <div class="section-head" style="margin-bottom:0;">
+        <div class="section-kicker">FAQ</div>
+        <h2>Good to know.</h2>
+        <p>Short answers to the things that usually come up before installing a tweak.</p>
+      </div>
+      <div>
+        <details open>
+          <summary>Do I need a computer after installing?</summary>
+          <p>No. The tweak is built and published by GitHub Actions. Your phone downloads the package from this repo, and imports happen entirely on-device.</p>
+        </details>
+        <details>
+          <summary>Where do imported files go?</summary>
+          <p>MusicDrop copies each pick into <code>/var/mobile/Media/MusicDrop/inbox/</code>, reads its metadata, serves it briefly on <code>127.0.0.1</code>, and asks Music's own download queue to import it. The inbox and artwork folders are pruned after seven days. Imported songs live in your normal Music library.</p>
+        </details>
+        <details>
+          <summary>Why should Music stay open?</summary>
+          <p>The temporary local server runs inside the Music app process. If iOS suspends Music before the store daemon fetches the file, the import can fail. MusicDrop requests extra background time, but keeping Music in the foreground is the reliable option.</p>
+        </details>
+        <details>
+          <summary>Will my songs disappear if I uninstall MusicDrop?</summary>
+          <p>No. Songs already added to the Music library stay there. Uninstalling removes the tweak only; the MusicDrop folder in Media is left alone so you can inspect or delete it with Filza.</p>
+        </details>
+        <details>
+          <summary>Is this a piracy tool?</summary>
+          <p>No. MusicDrop imports audio files you already have. It does not download music, bypass DRM, or talk to anything except this repo and the local Music app. Use it with files you have the right to use.</p>
+        </details>
+        <details>
+          <summary>Something failed. Where is the log?</summary>
+          <p>Open Filza and read <code>/var/mobile/Media/MusicDrop/musicdrop.log</code>. It records the server port, copied files, metadata, and any StoreServices errors. Include the last few lines when asking for help.</p>
+        </details>
+        <details>
+          <summary>Can I rebuild it myself?</summary>
+          <p>Yes. The source is in the repository. Push a change, let the GitHub Actions workflow build the rootless deb, and it will regenerate this index and deploy the page. The generator uses only the Python standard library.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap footer-row">
+    <div>MusicDrop is an independent project. Not affiliated with Apple. Use at your own risk.</div>
+    <div><a href="#top">Back to top</a> · <a href="Packages">Packages index</a></div>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite">Repo URL copied</div>
+
+<script>
+(() => {
+  const base = new URL("./", window.location.href).href;
+  const sileoURL = "sileo://source/" + base;
+  const repoURL = document.getElementById("repo-url");
+  const toast = document.getElementById("toast");
+
+  repoURL.textContent = base;
+  document.querySelectorAll("[data-sileo]").forEach((link) => {
+    link.href = sileoURL;
+  });
+
+  const showToast = (message) => {
+    toast.textContent = message;
+    toast.classList.add("show");
+    window.clearTimeout(showToast.timer);
+    showToast.timer = window.setTimeout(() => toast.classList.remove("show"), 1800);
+  };
+
+  const copyText = async (text, message) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const area = document.createElement("textarea");
+        area.value = text;
+        area.setAttribute("readonly", "");
+        area.style.position = "fixed";
+        area.style.opacity = "0";
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+      }
+      showToast(message);
+    } catch (error) {
+      showToast("Could not copy. Select the URL manually.");
+    }
+  };
+
+  document.getElementById("copy-repo").addEventListener("click", () => copyText(base, "Repo URL copied"));
+  document.getElementById("copy-repo-inline").addEventListener("click", () => copyText(base, "Repo URL copied"));
+
+  const formatBytes = (bytes) => {
+    if (!Number.isFinite(bytes) || bytes <= 0) return "—";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  };
+
+  const versionEl = document.querySelector("[data-version]");
+  const sizeEl = document.querySelector("[data-size]");
+  const updatedEl = document.querySelector("[data-updated]");
+
+  fetch("repo.json", { cache: "no-store" })
+    .then((response) => {
+      if (!response.ok) throw new Error("repo.json unavailable");
+      return response.json();
+    })
+    .then((info) => {
+      if (info.version) versionEl.textContent = info.version;
+      if (info.size) sizeEl.textContent = formatBytes(info.size);
+      if (info.generated) {
+        const date = new Date(info.generated);
+        if (!Number.isNaN(date.getTime())) {
+          updatedEl.textContent = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+        }
+      }
+    })
+    .catch(() => {
+      updatedEl.textContent = "this build";
+    });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+.theos/
+packages/
+_research/
+.firecrawl/
+*.log
+.DS_Store
+.vscode/
+.idea/
+
+__pycache__/
+*.pyc

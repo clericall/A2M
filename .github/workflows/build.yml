@@ -1,0 +1,114 @@
+name: Build and publish MusicDrop
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install Theos
+        run: |
+          set -euo pipefail
+          export THEOS="$HOME/theos"
+          if [ ! -d "$THEOS/.git" ]; then
+            git clone --recursive https://github.com/theos/theos.git "$THEOS"
+          fi
+          if [ ! -d "$THEOS/sdks" ] || [ -z "$(ls -A "$THEOS/sdks" 2>/dev/null)" ]; then
+            git clone --depth 1 https://github.com/theos/sdks.git "$THEOS/sdks"
+          fi
+          echo "THEOS=$THEOS" >> "$GITHUB_ENV"
+          echo "$THEOS/bin" >> "$GITHUB_PATH"
+
+      - name: Install ldid
+        run: |
+          if ! command -v ldid >/dev/null 2>&1; then
+            brew install ldid
+          fi
+
+      - name: Build rootless package
+        env:
+          THEOS_PACKAGE_SCHEME: rootless
+          THEOS_PLATFORM_DEB_COMPRESSION_TYPE: gzip
+        run: |
+          set -euo pipefail
+          chmod +x layout/DEBIAN/postinst layout/DEBIAN/postrm
+          make clean
+          make package FINALPACKAGE=1
+          ls -lh packages
+          test -n "$(find packages -maxdepth 1 -name '*.deb' -print -quit)"
+
+      - name: Generate repository index
+        run: |
+          set -euo pipefail
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          if [ "$REPO_NAME" = "${OWNER}.github.io" ]; then
+            HOMEPAGE="https://${OWNER}.github.io/"
+          else
+            HOMEPAGE="https://${OWNER}.github.io/${REPO_NAME}/"
+          fi
+          python3 scripts/make_repo.py \
+            --debs packages \
+            --out docs \
+            --clean \
+            --origin MusicDrop \
+            --label MusicDrop \
+            --description "MusicDrop - import your own audio files directly into the Music app." \
+            --homepage "$HOMEPAGE"
+
+      - name: Commit generated repo
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs
+          if git diff --cached --quiet; then
+            echo "Repository index already up to date."
+          else
+            git commit -m "Update MusicDrop repo index [skip ci]"
+            git push origin "HEAD:${GITHUB_REF_NAME}" || \
+              echo "::warning::Could not push the generated index; the Pages deploy still uses this build."
+          fi
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MusicDrop-deb
+          path: packages/*.deb
+          if-no-files-found: error
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

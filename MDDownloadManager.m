@@ -5,8 +5,10 @@
 
 #import <arpa/inet.h>
 #import <errno.h>
+#import <fcntl.h>
 #import <netinet/in.h>
 #import <spawn.h>
+#import <sys/stat.h>
 #import <sys/wait.h>
 #import <unistd.h>
 
@@ -190,6 +192,128 @@ static NSString *MDExecutableAtPaths(NSArray<NSString *> *paths) {
 		}
 	}
 	return nil;
+}
+
+static NSString *const MDYouTubeToolsDirectory = @"/var/mobile/Media/MusicDrop/bin";
+static NSString *const MDYouTubeBinaryPath = @"/var/mobile/Media/MusicDrop/bin/yt-dlp";
+static NSString *const MDYouTubeBinaryURL = @"https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos";
+
+/// Runs a tool without capturing output. Used for ldid signing.
+static NSInteger MDRunTool(NSArray<NSString *> *arguments) {
+	char **argv = calloc(arguments.count + 1, sizeof(char *));
+	if (!argv) {
+		return -1;
+	}
+	for (NSUInteger index = 0; index < arguments.count; index++) {
+		argv[index] = (char *)arguments[index].UTF8String;
+	}
+
+	posix_spawn_file_actions_t actions;
+	posix_spawn_file_actions_init(&actions);
+	posix_spawn_file_actions_addopen(&actions, STDERR_FILENO, "/dev/null", O_WRONLY, 0);
+
+	pid_t process = 0;
+	int result = posix_spawn(&process, arguments[0].fileSystemRepresentation,
+							 &actions, NULL, argv, NULL);
+	posix_spawn_file_actions_destroy(&actions);
+	free(argv);
+	if (result != 0) {
+		return -1;
+	}
+
+	int status = 0;
+	while (waitpid(process, &status, 0) < 0 && errno == EINTR) {
+	}
+	return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+}
+
+/// Keeps a current self-contained yt-dlp binary in the writable MusicDrop
+/// folder. The packaged yt-dlp is usually years old and fails on YouTube.
+static BOOL MDRefreshYouTubeBinary(void) {
+	NSFileManager *manager = [NSFileManager defaultManager];
+	NSError *directoryError = nil;
+	if (![manager createDirectoryAtPath:MDYouTubeToolsDirectory
+			withIntermediateDirectories:YES
+						attributes:@{NSFileProtectionKey: NSFileProtectionNone}
+							 error:&directoryError]) {
+		MDLog(@"Lyrics/Download: could not create bin directory: %@", directoryError.localizedDescription);
+		return NO;
+	}
+
+	NSDictionary *attributes = [manager attributesOfItemAtPath:MDYouTubeBinaryPath error:nil];
+	NSDate *modified = attributes[NSFileModificationDate];
+	BOOL fresh = [manager isExecutableFileAtPath:MDYouTubeBinaryPath] &&
+				 modified && modified.timeIntervalSinceNow > -(7 * 24 * 60 * 60);
+	if (fresh) {
+		return YES;
+	}
+
+	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:MDYouTubeBinaryURL]
+													  cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
+												  timeoutInterval:180.0];
+	[request setValue:@"MusicDrop/1.4" forHTTPHeaderField:@"User-Agent"];
+
+	__block NSData *download = nil;
+	dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+	NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request
+		completionHandler:^(NSData *data, __unused NSURLResponse *response, __unused NSError *error) {
+		download = data;
+		dispatch_semaphore_signal(semaphore);
+	}];
+	[task resume];
+	dispatch_time_t deadline = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(190.0 * NSEC_PER_SEC));
+	if (dispatch_semaphore_wait(semaphore, deadline) != 0) {
+		[task cancel];
+		MDLog(@"YouTube: timed out downloading yt-dlp.");
+		return NO;
+	}
+	if (download.length < 5 * 1024 * 1024 || download.length > 100 * 1024 * 1024) {
+		MDLog(@"YouTube: refusing suspicious yt-dlp download (%lu bytes).", (unsigned long)download.length);
+		return NO;
+	}
+
+	NSString *temporaryPath = [MDYouTubeToolsDirectory stringByAppendingPathComponent:
+		[NSString stringWithFormat:@"yt-dlp.%@.download", [NSUUID UUID].UUIDString]];
+	if (![download writeToFile:temporaryPath atomically:YES]) {
+		return NO;
+	}
+	chmod(temporaryPath.UTF8String, 0755);
+
+	NSString *ldid = MDExecutableAtPaths(@[
+		@"/var/jb/usr/bin/ldid", @"/var/jb/bin/ldid", @"/usr/bin/ldid",
+	]);
+	if (ldid) {
+		NSInteger status = MDRunTool(@[ldid, @"-S", temporaryPath]);
+		MDLog(@"YouTube: ldid status %ld", (long)status);
+	}
+
+	NSError *replaceError = nil;
+	BOOL replaced = [manager replaceItemAtURL:[NSURL fileURLWithPath:MDYouTubeBinaryPath]
+							   withItemAtURL:[NSURL fileURLWithPath:temporaryPath]
+							  backupItemName:nil
+									 options:NSFileManagerItemReplacementUsingNewMetadataOnly
+							resultingItemURL:nil
+									   error:&replaceError];
+	if (!replaced) {
+		MDLog(@"YouTube: could not install yt-dlp: %@", replaceError.localizedDescription);
+		[manager removeItemAtPath:temporaryPath error:nil];
+		return NO;
+	}
+	MDLog(@"YouTube: installed yt-dlp (%lu bytes)", (unsigned long)download.length);
+	return YES;
+}
+
+static NSArray<NSString *> *MDYouTubeLauncher(void) {
+	if (MDRefreshYouTubeBinary()) {
+		return @[MDYouTubeBinaryPath];
+	}
+	NSString *installed = MDExecutableAtPaths(@[
+		@"/var/jb/usr/bin/yt-dlp",
+		@"/var/jb/usr/local/bin/yt-dlp",
+		@"/usr/bin/yt-dlp",
+		@"/usr/local/bin/yt-dlp",
+	]);
+	return installed ? @[installed] : nil;
 }
 
 static NSString *MDLastUsefulOutputLine(NSString *output) {
@@ -415,15 +539,11 @@ static NSString *MDLastUsefulOutputLine(NSString *output) {
 		return;
 	}
 
-	NSString *ytDLP = MDExecutableAtPaths(@[
-		@"/var/jb/usr/bin/yt-dlp",
-		@"/var/jb/usr/local/bin/yt-dlp",
-		@"/usr/bin/yt-dlp",
-		@"/usr/local/bin/yt-dlp",
-	]);
-	if (!ytDLP) {
+	MDReportProgress(progress, @"Preparing yt-dlp…");
+	NSArray<NSString *> *launcher = MDYouTubeLauncher();
+	if (!launcher) {
 		MDFinishDownload(completion, nil, MDDownloadError(40,
-			@"YouTube support needs yt-dlp. Install a rootless yt-dlp package, then reopen Music. You can still download into Files elsewhere and use Import Files."));
+			@"Could not prepare yt-dlp. Check your connection to GitHub, or install a rootless yt-dlp package. You can still download into Files elsewhere and use Import Files."));
 		return;
 	}
 
@@ -440,8 +560,8 @@ static NSString *MDLastUsefulOutputLine(NSString *output) {
 	}
 
 	NSString *outputTemplate = [MDDownloadRoot stringByAppendingPathComponent:@"%(title).100B-%(id)s.%(ext)s"];
-	NSArray<NSString *> *arguments = @[
-		ytDLP,
+	NSMutableArray<NSString *> *arguments = [launcher mutableCopy];
+	[arguments addObjectsFromArray:@[
 		@"--no-playlist",
 		@"--max-filesize", @"500M",
 		@"--extract-audio",
@@ -457,7 +577,7 @@ static NSString *MDLastUsefulOutputLine(NSString *output) {
 		@"--output", outputTemplate,
 		@"--",
 		url.absoluteString,
-	];
+	]];
 
 	NSMutableDictionary<NSString *, NSString *> *environment = [[[NSProcessInfo processInfo] environment] mutableCopy];
 	environment[@"PATH"] = @"/var/jb/usr/bin:/var/jb/usr/local/bin:/usr/bin:/usr/local/bin:/bin:/var/jb/bin";
@@ -496,7 +616,7 @@ static NSString *MDLastUsefulOutputLine(NSString *output) {
 	posix_spawn_file_actions_addclose(&actions, outputPipe[1]);
 
 	pid_t process = 0;
-	int spawnResult = posix_spawn(&process, ytDLP.fileSystemRepresentation, &actions, NULL, argv, envp);
+	int spawnResult = posix_spawn(&process, arguments[0].fileSystemRepresentation, &actions, NULL, argv, envp);
 	posix_spawn_file_actions_destroy(&actions);
 	free(argv);
 	free(envp);

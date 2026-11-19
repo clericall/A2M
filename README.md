@@ -8,7 +8,7 @@ The package is built and published with GitHub Actions. The Sileo repository is 
 
 MusicDrop does not bypass DRM, rip Spotify tracks, or upload user files anywhere. Spotify URLs are recognized but cannot be downloaded because Spotify does not expose full-track audio to third parties.
 
-Direct HTTPS downloads work without extra packages. YouTube downloads require separately installed rootless `yt-dlp` and FFmpeg packages and should only be used for media you are allowed to save.
+Direct HTTPS downloads work without extra packages. YouTube downloads require FFmpeg; MusicDrop fetches its own current yt-dlp binary automatically. Use them only for media you are allowed to save.
 
 When FFmpeg is installed, MusicDrop looks up lyrics on [LRCLIB](https://lrclib.net) using the track's title, artist, album, and duration, then embeds them into the audio file so the Music app shows them under **Now Playing → Lyrics**. The audio is never uploaded; only those four metadata fields are sent. If FFmpeg is missing, the lookup fails, or LRCLIB has no match, the song imports normally without lyrics.
 
@@ -20,7 +20,7 @@ iOS does not allow the Music app to launch external binaries. YouTube downloads 
 - MobileSubstrate or ElleKit
 - Sileo or another package manager that supports `iphoneos-arm64`
 - DRM-free audio files the user is allowed to import
-- Optional for YouTube downloads: rootless `yt-dlp` and FFmpeg (for example from `https://apt.procurs.us/`)
+- Optional for YouTube downloads: FFmpeg (for example from `https://apt.procurs.us/`). MusicDrop downloads its own current yt-dlp binary automatically; an installed package is only a fallback.
 - Optional for lyrics: rootless FFmpeg
 - The bundled `musicdropd` LaunchDaemon must be allowed to run by the jailbreak
 
@@ -81,6 +81,7 @@ If the workflow cannot commit the generated index, check that `GITHUB_TOKEN` has
 - Direct URL downloads accept MP3, M4A, AAC, ALAC, WAV, AIFF, CAF, FLAC, MP4, M4V, and MOV responses up to 500 MB.
 - Direct URL downloads reject HTML, unsupported formats, empty files, oversized files, non-HTTPS URLs, and private/local hosts.
 - YouTube downloads are single items, not playlists. They are converted to M4A and limited to 500 MB.
+- The helper fetches the current self-contained `yt-dlp_macos` binary from GitHub on first use and refreshes it weekly, stored in `/var/mobile/Media/MusicDrop/bin/`. An installed yt-dlp package is only a fallback.
 - Spotify URLs return an error explaining that full tracks are DRM-protected.
 - With FFmpeg installed, lyrics are fetched from LRCLIB and embedded into the audio file. They appear in Music under the Now Playing lyrics view. Songs without a lyrics match still import normally.
 - Files without embedded artwork get a generated MusicDrop cover.
@@ -157,7 +158,7 @@ Check:
 - The server returns audio/video, not HTML.
 - The response has a supported extension or MIME type.
 - The file is not empty and is under 500 MB.
-- For YouTube, rootless `yt-dlp` and FFmpeg are installed and executable.
+- For YouTube, FFmpeg is installed and the log shows `YouTube: installed yt-dlp ...` on the first run.
 - For lyrics, FFmpeg is installed and the log shows `Lyrics: embedded ...`. A failed lookup is logged and does not affect the import.
 
 iOS may prevent `yt-dlp` from being spawned from inside Music. If that happens, download the file into Files by another method and use **Import Files**.
